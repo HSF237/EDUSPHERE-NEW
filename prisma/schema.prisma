@@ -81,6 +81,15 @@ model School {
   substitutes   Substitute[]
   audit         AuditLog[]
   invites       Invite[]
+  files         File[]
+  feeItems      FeeItem[]
+  feePayments   FeePayment[]
+  alerts        AlertLog[]
+  brandColor      String?
+  logoFileId      String?
+  signatureFileId String?
+  signatoryName   String?
+  signatoryTitle  String?
 }
 
 model User {
@@ -225,6 +234,8 @@ model Student {
   leaves      LeaveRequest[]
   ptmSlots    PtmSlot[]
   invites     Invite[]
+  payments    FeePayment[]
+  photoFileId String?
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId, classId])
@@ -286,6 +297,7 @@ model Homework {
   assignedOn  DateTime @default(now())
   dueOn       DateTime @db.Date
   status      HwStatus @default(ACTIVE)
+  fileId      String?
 
   school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   class       Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -442,6 +454,7 @@ model Announcement {
   audience  AnnAudience @default(ALL)
   classId   String?
   pinned    Boolean     @default(false)
+  fileId    String?
   createdAt DateTime    @default(now())
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -587,4 +600,91 @@ model Invite {
 
   @@index([schoolId, kind])
   @@index([studentId])
+}
+
+/// Uploaded documents and images, stored in the database (max a few MB each).
+model File {
+  id           String   @id @default(cuid())
+  schoolId     String
+  name         String
+  mime         String
+  size         Int
+  data         Bytes
+  studentId    String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+/// A fee the school charges: for one class, or for every class when classId is null.
+model FeeItem {
+  id        String   @id @default(cuid())
+  schoolId  String
+  classId   String?
+  name      String
+  amount    Int
+  dueOn     DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  school   School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  payments FeePayment[]
+
+  @@index([schoolId, classId])
+}
+
+/// Money received (or a waiver) against a student, optionally for one fee item.
+model FeePayment {
+  id           String   @id @default(cuid())
+  schoolId     String
+  studentId    String
+  itemId       String?
+  amount       Int
+  mode         String
+  reference    String?
+  note         String?
+  paidOn       DateTime @db.Date
+  receiptNo    String
+  receivedById String
+  createdAt    DateTime @default(now())
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  item    FeeItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@unique([schoolId, receiptNo])
+  @@index([studentId])
+}
+
+/// Outbox of parent alerts (WhatsApp / SMS). Sent automatically when a provider is configured, otherwise shared by hand.
+model AlertLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String?
+  phone     String
+  kind      String
+  body      String
+  channel   String
+  status    String
+  error     String?
+  createdAt DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
+}
+
+/// Browser push subscriptions (one per device).
+model PushSub {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

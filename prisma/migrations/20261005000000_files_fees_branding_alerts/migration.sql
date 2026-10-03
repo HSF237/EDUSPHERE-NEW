@@ -129,3 +129,4 @@ ALTER TABLE "FeePayment" ADD CONSTRAINT "FeePayment_itemId_fkey" FOREIGN KEY ("i
 
 -- AddForeignKey
 ALTER TABLE "AlertLog" ADD CONSTRAINT "AlertLog_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
