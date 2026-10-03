@@ -20,7 +20,7 @@ export default async function Students({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Students" sub={`${total} students`}>
-        <form className="flex gap-2"><input name="q" defaultValue={sp.q} placeholder="Search name or admission no." className="input w-64" aria-label="Search students" />
+        <form className="flex w-full flex-wrap gap-2 sm:w-auto"><input name="q" defaultValue={sp.q} placeholder="Search name or admission no." className="input w-full sm:w-64" aria-label="Search students" />
           <select name="class" defaultValue={sp.class ?? ""} className="input w-28" aria-label="Class"><option value="">All</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn-ghost">Filter</button></form>
       </PageHeader>
       {ctx.role === "ADMIN" && (

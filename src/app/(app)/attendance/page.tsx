@@ -30,7 +30,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
   return (
     <>
       <PageHeader title="Attendance" sub="Mark the daily register. Principal approval is required before parents are notified.">
-        <form className="flex items-center gap-2">
+        <form className="flex flex-wrap items-center gap-2">
           <select name="class" defaultValue={classId} className="input w-32" aria-label="Class">{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <input type="date" name="date" defaultValue={date} max={isoDate(todayUTC())} className="input w-40" aria-label="Date" />
           <button className="btn-ghost">Go</button>
@@ -68,7 +68,7 @@ async function ParentView({ ctx, childId }: { ctx: Awaited<ReturnType<typeof get
       <PageHeader title="Attendance" sub={`${kid.name} · Class ${kid.class.name}`}>
         {kids.length > 1 && <form><select name="child" defaultValue={kid.id} className="input" aria-label="Child">{kids.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}</select> <button className="btn-ghost">Switch</button></form>}
       </PageHeader>
-      <div className="mb-6 grid gap-4 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Stat label="Attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 75 ? "amber" : "red"} /><Stat label="Present" value={c("PRESENT")} tone="green" />
         <Stat label="Absent" value={c("ABSENT")} tone="red" /><Stat label="Late" value={c("LATE")} tone="amber" />
       </div>

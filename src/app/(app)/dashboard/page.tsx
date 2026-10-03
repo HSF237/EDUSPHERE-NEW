@@ -20,8 +20,8 @@ async function PlatformDash() {
   return (
     <>
       <DashBanner title="Platform overview" sub="Every school on EduSphere, at a glance." scene={<SceneCampus />} chips={<><Chip>{schools} schools</Chip><Chip>{users} users</Chip></>} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Schools" value={schools} icon="building" tone="indigo" /><Stat label="Users" value={users} icon="users" /><Stat label="Students" value={students} icon="cap" tone="green" />
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <Stat label="Schools" value={schools} icon="building" tone="indigo" /><Stat label="Users" value={users} icon="users" /><div className="col-span-2 sm:col-span-1"><Stat label="Students" value={students} icon="cap" tone="green" /></div>
       </div>
       <Card title="Recently added schools" flush>
         <Table head={["School", "Code", "Students", "Teachers", "Status"]}>
@@ -64,7 +64,7 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
   return (
     <>
       <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />} chips={<><Chip>{students} students</Chip><Chip>{pendingLeave} leave pending</Chip><Chip>{hw} homework due</Chip></>} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Students" value={students} hint={`${classes.length} classes`} icon="cap" />
         <Stat label="30-day attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 80 ? "amber" : "red"} hint={`${total} records`} icon="attendance" />
         <Stat label={admin ? "Attendance to approve" : "Classes marked today"} value={admin ? pendingApprovals : `${sessionsToday}/${classes.length}`} tone="indigo" icon="check" />
@@ -116,16 +116,16 @@ async function ParentDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) 
       <div className="space-y-6">
         {cards.map(({ k, rate, hw, avg }) => (
           <Card key={k.id} title={`${k.name} · Class ${k.class.name}`}>
-            <div className="mb-4 grid gap-4 sm:grid-cols-3">
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               <Stat label="Attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 75 ? "amber" : "red"} icon="attendance" />
               <Stat label="Average marks" value={avg ?? "—"} tone="indigo" icon="award" />
-              <Stat label="Homework pending" value={hw.filter((h) => !h.submissions[0]?.done).length} icon="notebook" />
+              <div className="col-span-2 sm:col-span-1"><Stat label="Homework pending" value={hw.filter((h) => !h.submissions[0]?.done).length} icon="notebook" /></div>
             </div>
             <h3 className="mb-2 text-sm font-semibold">Upcoming homework</h3>
             {hw.length === 0 ? <p className="text-sm text-slate-500">No pending homework.</p> : (
               <ul className="divide-y divide-slate-100 text-sm">{hw.map((h) => (
-                <li key={h.id} className="flex items-center justify-between py-2"><span>{h.title} <span className="text-slate-500">· {h.subject.name}</span></span>
-                  <span className="flex items-center gap-2">Due {fmtDate(h.dueOn)} {h.submissions[0]?.done ? <Badge tone="green">Done</Badge> : <Badge tone="amber">Pending</Badge>}</span></li>
+                <li key={h.id} className="flex flex-col gap-1.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2"><span>{h.title} <span className="text-slate-500">· {h.subject.name}</span></span>
+                  <span className="flex items-center gap-2 text-xs text-slate-600 sm:text-sm">Due {fmtDate(h.dueOn)} {h.submissions[0]?.done ? <Badge tone="green">Done</Badge> : <Badge tone="amber">Pending</Badge>}</span></li>
               ))}</ul>
             )}
           </Card>
