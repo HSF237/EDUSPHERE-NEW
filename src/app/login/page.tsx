@@ -3,6 +3,14 @@ import { useActionState } from "react";
 import { loginAction } from "@/lib/actions-auth";
 import { SceneClassroom } from "@/components/art";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function ResetBanner() {
+  const q = useSearchParams();
+  if (q.get("reset") !== "1") return null;
+  return <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Password updated. Please sign in.</div>;
+}
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined);
@@ -27,6 +35,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-extrabold tracking-tight text-brand-950">Welcome back</h2>
             <p className="mt-1 text-sm text-slate-500">Sign in with the account your school gave you.</p>
           </div>
+          <Suspense><ResetBanner /></Suspense>
           {state?.error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</div>}
           <div>
             <label className="label" htmlFor="email">Email</label>
@@ -37,6 +46,8 @@ export default function LoginPage() {
             <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
           </div>
           <button className="btn w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
+          <p className="text-center text-xs text-slate-500">Forgot your password? Ask your principal or class teacher for a reset link.</p>
+          <p className="text-center text-sm font-semibold"><Link className="text-brand-700 underline" href="/register-school">Create your school</Link></p>
           <p className="text-center text-xs text-slate-500">By signing in you agree to our <Link className="font-semibold text-brand-700 underline" href="/terms">Terms</Link> and <Link className="font-semibold text-brand-700 underline" href="/privacy">Privacy Policy</Link>. <Link className="underline" href="/">Back to home</Link></p>
         </form>
         </div>

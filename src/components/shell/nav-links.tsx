@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "../icons";
+import { stripKey } from "@/lib/pagekey";
 
-type Item = { href: string; label: string; icon: IconName; group: string; badge?: number };
+type Item = { href: string; base?: string; label: string; icon: IconName; group: string; badge?: number };
 
 export function NavLinks({ items, onNavigate }: { items: Item[]; onNavigate?: () => void }) {
-  const path = usePathname();
+  const path = stripKey(usePathname());
   const groups = [...new Set(items.map((i) => i.group))];
   return (
     <nav aria-label="Main" className="space-y-5">
@@ -15,7 +16,8 @@ export function NavLinks({ items, onNavigate }: { items: Item[]; onNavigate?: ()
           <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[.14em] text-brand-300/70">{g}</div>
           <ul className="space-y-0.5">
             {items.filter((i) => i.group === g).map((i) => {
-              const active = path === i.href || path.startsWith(i.href + "/");
+              const base = i.base ?? i.href;
+              const active = path === base || path.startsWith(base + "/");
               return (
                 <li key={i.href}>
                   <Link

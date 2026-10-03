@@ -8,6 +8,8 @@ import { NavLinks } from "@/components/shell/nav-links";
 import { MobileMenu } from "@/components/shell/mobile-menu";
 import { BottomNav } from "@/components/shell/bottom-nav";
 import { Icon } from "@/components/icons";
+import { keyedHref } from "@/lib/pagekey";
+import { ForcePassword } from "./force-password";
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
 
@@ -28,9 +30,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx = await getCtx();
   const user = ctx.user;
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
-  const items = navFor(user.role, ctx.mode, ctx.perms).map((n) => ({ href: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined }));
+  if (user.mustChangePassword) return <ForcePassword name={user.name} />;
+  const secret = process.env.AUTH_SECRET ?? "";
+  const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined })));
   const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ctx.mode === "SUBJECT" ? ["/dashboard", "/exams", "/portions", "/homework"] : ["/dashboard", "/attendance", "/homework", "/messages"])
-    .map((h) => items.find((i) => i.href === h)).filter((i): i is (typeof items)[number] => !!i);
+    .map((h) => items.find((i) => i.base === h)).filter((i): i is (typeof items)[number] => !!i);
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   const school = user.school?.name ?? "All schools";
   const roleLabel = user.role === "TEACHER" ? (ctx.position ? `${ctx.position} · ${ctx.mode === "SUBJECT" ? "Subject teacher" : "Teacher"}` : ctx.mode === "SUBJECT" ? "Subject teacher" : ctx.mode === "CLASS" ? "Class teacher" : "Teacher") : ROLE_LABEL[user.role];
@@ -81,7 +85,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
         <main id="main" className="mx-auto max-w-6xl p-4 pb-28 sm:p-8 lg:pb-8">{children}</main>
-        <BottomNav items={quick.map((q) => ({ href: q.href, label: q.label.split(" ")[0], icon: q.icon, badge: q.badge }))} />
+        <BottomNav items={quick.map((q) => ({ href: q.href, base: q.base, label: q.label.split(" ")[0], icon: q.icon, badge: q.badge }))} />
       </div>
     </div>
   );
