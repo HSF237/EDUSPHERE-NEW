@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { getCtx, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Stat, Table, Badge } from "@/components/ui";
 import { fmtDate, pct } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const ctx = await getCtx();
   if (ctx.role === "PARENT") notFound();
   const { id } = await params;
-  const s = await db.student.findFirst({ where: { id, schoolId: ctx.schoolId, classId: { in: ctx.classIds } }, include: { class: true, guardians: { include: { user: true } } } });
+  const s = await db.student.findFirst({ where: { id, schoolId: ctx.schoolId, classId: { in: await scopeClassIds(ctx, "STUDENTS") } }, include: { class: true, guardians: { include: { user: true } } } });
   if (!s) notFound();
   const [grp, marks, leaves] = await Promise.all([
     db.attendanceRecord.groupBy({ by: ["status"], where: { studentId: s.id, session: { status: "APPROVED" } }, _count: true }),

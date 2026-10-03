@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { redirect } from "next/navigation";
+import { can, getCtx, isClassStaff } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge, Empty, Progress, Stat } from "@/components/ui";
 import { fmtDate, isoDate, pct, todayUTC } from "@/lib/utils";
 import { Register } from "./register";
@@ -13,12 +14,16 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
   const ctx = await getCtx();
   const sp = await searchParams;
   if (ctx.role === "PARENT") return <ParentView ctx={ctx} childId={sp.child} />;
+  const approver = can(ctx, "ATTENDANCE_APPROVE");
+  const register = isClassStaff(ctx);
+  if (!register && !approver) redirect("/dashboard");
   const classes = await db.class.findMany({ where: { id: { in: ctx.classIds } }, orderBy: { name: "asc" } });
   const classId = classes.find((c) => c.id === sp.class)?.id ?? classes[0]?.id;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? "") ? sp.date! : isoDate(todayUTC());
-  const pending = ctx.role === "ADMIN"
+  const pending = approver
     ? await db.attendanceSession.findMany({ where: { schoolId: ctx.schoolId, status: "PENDING" }, include: { class: true, records: true }, orderBy: { date: "desc" }, take: 20 })
     : [];
+  if (!register) return (<><PageHeader title="Attendance approvals" sub="Registers submitted by class teachers are waiting for your review." />{pending.length === 0 ? <Card><Empty title="Nothing to approve" hint="All submitted registers have been reviewed." /></Card> : <Card title={`Awaiting approval (${pending.length})`} flush><Table head={["Class", "Date", "Absent", "Late", ""]}>{pending.map((s) => (<tr key={s.id}><td className="td font-medium">{s.class.name}</td><td className="td">{fmtDate(s.date)}</td><td className="td">{s.records.filter((r) => r.status === "ABSENT").length}</td><td className="td">{s.records.filter((r) => r.status === "LATE").length}</td><td className="td"><ReviewButtons id={s.id} /></td></tr>))}</Table></Card>}</>);
   if (!classId) return (<><PageHeader title="Attendance" /><Card><Empty title="No classes assigned" hint="Ask your school admin to assign you to a class." /></Card></>);
   const [students, session] = await Promise.all([
     db.student.findMany({ where: { classId, schoolId: ctx.schoolId, active: true }, orderBy: { rollNo: "asc" } }),
@@ -36,7 +41,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
           <button className="btn-ghost">Go</button>
         </form>
       </PageHeader>
-      {ctx.role === "ADMIN" && pending.length > 0 && (
+      {approver && pending.length > 0 && (
         <Card title={`Awaiting approval (${pending.length})`} className="mb-6" flush>
           <Table head={["Class", "Date", "Absent", "Late", ""]}>
             {pending.map((s) => (

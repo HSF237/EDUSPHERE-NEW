@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { redirect } from "next/navigation";
+import { can, getCtx, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty } from "@/components/ui";
 import { createStudent } from "./actions";
 
@@ -10,10 +11,12 @@ const PAGE = 25;
 export default async function Students({ searchParams }: { searchParams: Promise<{ q?: string; class?: string; page?: string }> }) {
   const ctx = await getCtx();
   if (ctx.role === "PARENT") return null;
+  if (ctx.role === "TEACHER" && ctx.mode !== "CLASS" && !can(ctx, "STUDENTS")) redirect("/dashboard");
+  const scope = await scopeClassIds(ctx, "STUDENTS");
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
-  const classes = await db.class.findMany({ where: { id: { in: ctx.classIds } }, orderBy: { name: "asc" } });
-  const where = { schoolId: ctx.schoolId, classId: sp.class && ctx.classIds.includes(sp.class) ? sp.class : { in: ctx.classIds }, ...(sp.q ? { OR: [{ name: { contains: sp.q, mode: "insensitive" as const } }, { admissionNo: { contains: sp.q, mode: "insensitive" as const } }] } : {}) };
+  const classes = await db.class.findMany({ where: { id: { in: scope } }, orderBy: { name: "asc" } });
+  const where = { schoolId: ctx.schoolId, classId: sp.class && scope.includes(sp.class) ? sp.class : { in: scope }, ...(sp.q ? { OR: [{ name: { contains: sp.q, mode: "insensitive" as const } }, { admissionNo: { contains: sp.q, mode: "insensitive" as const } }] } : {}) };
   const [total, list] = await Promise.all([db.student.count({ where }), db.student.findMany({ where, include: { class: true }, orderBy: [{ class: { name: "asc" } }, { rollNo: "asc" }], skip: (page - 1) * PAGE, take: PAGE })]);
   const pages = Math.max(1, Math.ceil(total / PAGE));
   const qs = (p: number) => `?${new URLSearchParams({ ...(sp.q ? { q: sp.q } : {}), ...(sp.class ? { class: sp.class } : {}), page: String(p) })}`;
@@ -23,7 +26,7 @@ export default async function Students({ searchParams }: { searchParams: Promise
         <form className="flex w-full flex-wrap gap-2 sm:w-auto"><input name="q" defaultValue={sp.q} placeholder="Search name or admission no." className="input w-full sm:w-64" aria-label="Search students" />
           <select name="class" defaultValue={sp.class ?? ""} className="input w-28" aria-label="Class"><option value="">All</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn-ghost">Filter</button></form>
       </PageHeader>
-      {ctx.role === "ADMIN" && (
+      {can(ctx, "STUDENTS") && (
         <Card title="Add student" className="mb-6"><form action={createStudent} className="grid gap-4 sm:grid-cols-5">
           <div className="sm:col-span-2"><label className="label" htmlFor="sn">Full name</label><input id="sn" name="name" className="input" required /></div>
           <div><label className="label" htmlFor="sc">Class</label><select id="sc" name="classId" className="input">{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>

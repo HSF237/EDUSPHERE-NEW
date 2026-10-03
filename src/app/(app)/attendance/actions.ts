@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCtx, notify } from "@/lib/scope";
+import { can, getCtx, notify } from "@/lib/scope";
 
 const statuses = ["PRESENT", "ABSENT", "LATE", "EXCUSED"] as const;
 const schema = z.object({
@@ -14,6 +14,7 @@ const schema = z.object({
 export async function saveAttendance(input: z.infer<typeof schema>) {
   const ctx = await getCtx();
   if (ctx.role !== "TEACHER" && ctx.role !== "ADMIN") return { error: "Not allowed" };
+  if (ctx.role === "TEACHER" && ctx.mode !== "CLASS") return { error: "Attendance is marked by the class teacher. Switch to your own class." };
   const p = schema.safeParse(input);
   if (!p.success) return { error: "Invalid data" };
   const { classId, date, entries } = p.data;
@@ -40,7 +41,7 @@ export async function saveAttendance(input: z.infer<typeof schema>) {
 
 export async function reviewAttendance(sessionId: string, approve: boolean, note?: string) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return;
+  if (!can(ctx, "ATTENDANCE_APPROVE")) return;
   const ses = await db.attendanceSession.findFirst({ where: { id: sessionId, schoolId: ctx.schoolId }, include: { class: true, records: { include: { student: { include: { guardians: true } } } } } });
   if (!ses) return;
   await db.attendanceSession.update({ where: { id: ses.id }, data: { status: approve ? "APPROVED" : "REJECTED", reviewedById: ctx.user.id, reviewNote: note || null } });

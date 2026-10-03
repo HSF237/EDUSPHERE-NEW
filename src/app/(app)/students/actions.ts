@@ -3,13 +3,13 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { can, getCtx } from "@/lib/scope";
 
 const schema = z.object({ name: z.string().trim().min(2).max(100), classId: z.string().min(1), gender: z.enum(["F", "M"]), dob: z.string().optional(), parentEmail: z.string().email().optional().or(z.literal("")), parentName: z.string().trim().max(100).optional() });
 
 export async function createStudent(fd: FormData) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return;
+  if (!can(ctx, "STUDENTS")) return;
   const p = schema.safeParse(Object.fromEntries(fd));
   if (!p.success) return;
   const d = p.data;
