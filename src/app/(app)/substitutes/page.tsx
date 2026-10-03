@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { can, getCtx, notify } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty } from "@/components/ui";
 import { fmtDate, isoDate, todayUTC } from "@/lib/utils";
+import { SlotPicker } from "./slot-picker";
 
 export const metadata = { title: "Substitutes" };
 
@@ -28,14 +29,13 @@ export default async function Substitutes() {
   if (ctx.role === "PARENT") return null;
   const today = todayUTC();
   const list = await db.substitute.findMany({ where: { schoolId: ctx.schoolId, date: { gte: today }, ...(ctx.role === "TEACHER" && !can(ctx, "SUBSTITUTES") ? { OR: [{ subTeacherId: ctx.teacherId! }, { absentTeacherId: ctx.teacherId! }] } : {}) }, include: { slot: { include: { class: true, subject: true } }, sub: { include: { user: true } }, absent: { include: { user: true } } }, orderBy: { date: "asc" } });
-  const [slots, teachers] = can(ctx, "SUBSTITUTES") ? await Promise.all([db.timetableSlot.findMany({ where: { schoolId: ctx.schoolId }, include: { class: true, subject: true, teacher: { include: { user: true } } }, orderBy: [{ day: "asc" }, { period: "asc" }], take: 400 }), db.teacher.findMany({ where: { schoolId: ctx.schoolId }, include: { user: true } })]) : [[], []];
-  const DAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return (
+  const [slots, teachers] = can(ctx, "SUBSTITUTES") ? await Promise.all([db.timetableSlot.findMany({ where: { schoolId: ctx.schoolId }, include: { class: true, subject: true, teacher: { include: { user: true } } }, orderBy: [{ day: "asc" }, { period: "asc" }], take: 5000 }), db.teacher.findMany({ where: { schoolId: ctx.schoolId }, include: { user: true } })]) : [[], []];
+    return (
     <>
       <PageHeader title="Substitutes" sub="Cover for absent teachers. Conflicts with the substitute’s own timetable are blocked." />
       {can(ctx, "SUBSTITUTES") && (
         <Card title="Assign substitute" className="mb-6"><form action={assignSub} className="grid gap-4 sm:grid-cols-4">
-          <div className="sm:col-span-2"><label className="label" htmlFor="ss">Period to cover</label><select id="ss" name="slotId" className="input">{slots.map((s) => <option key={s.id} value={s.id}>{DAY[s.day]} P{s.period} · {s.class.name} · {s.subject.name} ({s.teacher.user.name})</option>)}</select></div>
+          <div className="sm:col-span-4"><label className="label" htmlFor="ss">Period to cover</label><SlotPicker slots={slots.map((s) => ({ id: s.id, day: s.day, period: s.period, cls: s.class.name, subject: s.subject.name, teacher: s.teacher.user.name, teacherId: s.teacherId }))} /></div>
           <div><label className="label" htmlFor="sd">Date (must match weekday)</label><input id="sd" name="date" type="date" min={isoDate(today)} className="input" required /></div>
           <div><label className="label" htmlFor="st">Substitute</label><select id="st" name="subTeacherId" className="input">{teachers.map((t) => <option key={t.id} value={t.id}>{t.user.name}</option>)}</select></div>
           <div className="sm:col-span-3"><label className="label" htmlFor="sr">Reason</label><input id="sr" name="reason" className="input" /></div><div className="flex items-end justify-end"><button className="btn">Assign</button></div></form></Card>
