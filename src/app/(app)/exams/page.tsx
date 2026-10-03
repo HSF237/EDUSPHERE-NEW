@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getCtx, pickChild } from "@/lib/scope";
+import { can, getCtx, pickChild, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge, Empty } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
 import { NewExam } from "./forms";
@@ -30,12 +30,13 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
       </>
     );
   }
-  const classes = await db.class.findMany({ where: { id: { in: ctx.classIds } }, orderBy: { name: "asc" } });
-  const exams = await db.exam.findMany({ where: { schoolId: ctx.schoolId, classId: { in: ctx.classIds } }, include: { class: true, _count: { select: { marks: true } } }, orderBy: { startsOn: "desc" }, take: 100 });
+  const scope = await scopeClassIds(ctx, "EXAMS");
+  const classes = await db.class.findMany({ where: { id: { in: scope } }, orderBy: { name: "asc" } });
+  const exams = await db.exam.findMany({ where: { schoolId: ctx.schoolId, classId: { in: scope } }, include: { class: true, _count: { select: { marks: true } } }, orderBy: { startsOn: "desc" }, take: 100 });
   return (
     <>
-      <PageHeader title="Exams & marks" sub="Create exams, enter marks by subject and publish results to parents." />
-      {ctx.role === "ADMIN" && <Card title="Create exam" className="mb-6"><NewExam classes={classes.map((c) => ({ id: c.id, name: c.name }))} /></Card>}
+      <PageHeader title="Exams & marks" sub={ctx.mode === "SUBJECT" ? `Enter marks for ${ctx.active?.subjects.join(", ")} in class ${ctx.active?.name}.` : "Create exams, enter marks by subject and publish results to parents."} />
+      {can(ctx, "EXAMS") && <Card title="Create exam" className="mb-6"><NewExam classes={classes.map((c) => ({ id: c.id, name: c.name }))} /></Card>}
       <Card title="Exams" flush>
         {exams.length === 0 ? <Empty title="No exams yet" /> : (
           <Table head={["Exam", "Class", "Starts", "Max / Pass", "Marks entered", "Status"]}>{exams.map((e) => (

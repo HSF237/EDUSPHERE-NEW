@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge, Empty } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
@@ -9,6 +10,7 @@ const tone = { PENDING: "amber", APPROVED: "green", REJECTED: "red" } as const;
 
 export default async function LeavePage() {
   const ctx = await getCtx();
+  if (ctx.role === "TEACHER" && ctx.mode !== "CLASS") redirect("/dashboard");
   const where = ctx.role === "PARENT" ? { schoolId: ctx.schoolId, studentId: { in: ctx.childIds } } : { schoolId: ctx.schoolId, student: { classId: { in: ctx.classIds } } };
   const list = await db.leaveRequest.findMany({ where, include: { student: { include: { class: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
   const kids = ctx.role === "PARENT" ? await db.student.findMany({ where: { id: { in: ctx.childIds } }, select: { id: true, name: true } }) : [];

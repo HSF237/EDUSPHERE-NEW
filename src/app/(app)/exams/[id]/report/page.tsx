@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { getCtx, scopeClassIds } from "@/lib/scope";
 import { fmtDate, grade } from "@/lib/utils";
 
 export const metadata = { title: "Report card" };
@@ -10,7 +10,7 @@ export default async function ReportCard({ params, searchParams }: { params: Pro
   const { id } = await params; const { student } = await searchParams;
   const exam = await db.exam.findFirst({ where: { id, schoolId: ctx.schoolId }, include: { class: true, schedule: { include: { subject: true } } } });
   if (!exam || !student) notFound();
-  if (ctx.role === "PARENT" ? !ctx.childIds.includes(student) || !exam.published : !ctx.classIds.includes(exam.classId)) notFound();
+  if (ctx.role === "PARENT" ? !ctx.childIds.includes(student) || !exam.published : !(await scopeClassIds(ctx, "EXAMS")).includes(exam.classId)) notFound();
   const st = await db.student.findFirst({ where: { id: student, classId: exam.classId, schoolId: ctx.schoolId } });
   if (!st) notFound();
   const marks = await db.mark.findMany({ where: { examId: id, studentId: st.id } });

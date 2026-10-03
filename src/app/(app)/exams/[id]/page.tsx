@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { can, getCtx, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge } from "@/components/ui";
 import { fmtDate, grade } from "@/lib/utils";
 import { MarksEntry, PublishButton } from "../forms";
@@ -10,9 +10,9 @@ export default async function ExamDetail({ params, searchParams }: { params: Pro
   const ctx = await getCtx();
   if (ctx.role === "PARENT") notFound();
   const { id } = await params; const sp = await searchParams;
-  const exam = await db.exam.findFirst({ where: { id, schoolId: ctx.schoolId, classId: { in: ctx.classIds } }, include: { class: true, schedule: { include: { subject: true }, orderBy: { date: "asc" } } } });
+  const exam = await db.exam.findFirst({ where: { id, schoolId: ctx.schoolId, classId: { in: await scopeClassIds(ctx, "EXAMS") } }, include: { class: true, schedule: { include: { subject: true }, orderBy: { date: "asc" } } } });
   if (!exam) notFound();
-  const teachable = ctx.role === "ADMIN" ? exam.schedule.map((s) => s.subject) : (await db.classSubject.findMany({ where: { classId: exam.classId, teacherId: ctx.teacherId! }, include: { subject: true } })).map((c) => c.subject);
+  const teachable = can(ctx, "EXAMS") ? exam.schedule.map((s) => s.subject) : (await db.classSubject.findMany({ where: { classId: exam.classId, teacherId: ctx.teacherId! }, include: { subject: true } })).map((c) => c.subject);
   const subject = teachable.find((s) => s.id === sp.subject) ?? teachable[0];
   const students = await db.student.findMany({ where: { classId: exam.classId, active: true }, orderBy: { rollNo: "asc" }, include: { marks: { where: { examId: exam.id } } } });
   const subjects = exam.schedule.map((s) => s.subject);
@@ -22,7 +22,7 @@ export default async function ExamDetail({ params, searchParams }: { params: Pro
     <>
       <PageHeader art="exams" title={`${exam.name} · ${exam.class.name}`} sub={`Max ${exam.maxMarks}, pass ${exam.passMarks} · starts ${fmtDate(exam.startsOn)}`}>
         <Badge tone={exam.published ? "green" : "amber"}>{exam.published ? "Published" : "Draft"}</Badge>
-        {ctx.role === "ADMIN" && <PublishButton examId={exam.id} published={exam.published} />}
+        {can(ctx, "EXAMS") && <PublishButton examId={exam.id} published={exam.published} />}
       </PageHeader>
       <div className="grid gap-6 lg:grid-cols-5">
         <Card title={subject ? `Enter marks — ${subject.name}` : "Enter marks"} className="lg:col-span-2" flush>

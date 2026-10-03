@@ -9,7 +9,7 @@ export async function allowedRecipients(ctx: Awaited<ReturnType<typeof getCtx>>)
   const base = { schoolId: ctx.schoolId, active: true, id: { not: ctx.user.id } };
   if (ctx.role === "ADMIN") return db.user.findMany({ where: base, select: { id: true, name: true, role: true }, orderBy: { name: "asc" }, take: 500 });
   if (ctx.role === "TEACHER")
-    return db.user.findMany({ where: { ...base, OR: [{ role: "ADMIN" }, { role: "PARENT", children: { some: { student: { classId: { in: ctx.classIds } } } } }] }, select: { id: true, name: true, role: true }, orderBy: { name: "asc" }, take: 500 });
+    return db.user.findMany({ where: { ...base, OR: [{ role: "ADMIN" }, { role: "PARENT", children: { some: { student: { classId: { in: ctx.workspaces.map((w) => w.id) } } } } }] }, select: { id: true, name: true, role: true }, orderBy: { name: "asc" }, take: 500 });
   return db.user.findMany({ where: { ...base, OR: [{ role: "ADMIN" }, { role: "TEACHER", teacher: { OR: [{ homeroom: { some: { id: { in: ctx.classIds } } } }, { assignments: { some: { classId: { in: ctx.classIds } } } }] } }] }, select: { id: true, name: true, role: true }, orderBy: { name: "asc" } });
 }
 

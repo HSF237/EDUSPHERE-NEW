@@ -1,13 +1,14 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { redirect } from "next/navigation";
+import { can, getCtx } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty } from "@/components/ui";
 
 export const metadata = { title: "Classes & subjects" };
 
 async function addClass(fd: FormData) {
   "use server";
-  const ctx = await getCtx(); if (ctx.role !== "ADMIN") return;
+  const ctx = await getCtx(); if (!can(ctx, "CLASSES")) return;
   const grade = Number(fd.get("grade")); const section = String(fd.get("section") ?? "").trim().toUpperCase();
   if (!grade || !section) return;
   const year = await db.academicYear.findFirst({ where: { schoolId: ctx.schoolId, current: true } });
@@ -18,7 +19,7 @@ async function addClass(fd: FormData) {
 }
 async function addSubject(fd: FormData) {
   "use server";
-  const ctx = await getCtx(); if (ctx.role !== "ADMIN") return;
+  const ctx = await getCtx(); if (!can(ctx, "CLASSES")) return;
   const name = String(fd.get("name") ?? "").trim(); const code = String(fd.get("code") ?? "").trim().toUpperCase();
   if (!name || !code) return;
   await db.subject.create({ data: { schoolId: ctx.schoolId, name, code } }).catch(() => {});
@@ -26,7 +27,7 @@ async function addSubject(fd: FormData) {
 }
 async function assign(fd: FormData) {
   "use server";
-  const ctx = await getCtx(); if (ctx.role !== "ADMIN") return;
+  const ctx = await getCtx(); if (!can(ctx, "CLASSES")) return;
   const [classId, subjectId, teacherId] = ["classId", "subjectId", "teacherId"].map((k) => String(fd.get(k) ?? ""));
   const [c, s, t] = await Promise.all([db.class.findFirst({ where: { id: classId, schoolId: ctx.schoolId } }), db.subject.findFirst({ where: { id: subjectId, schoolId: ctx.schoolId } }), db.teacher.findFirst({ where: { id: teacherId, schoolId: ctx.schoolId } })]);
   if (!c || !s || !t) return;
@@ -36,7 +37,7 @@ async function assign(fd: FormData) {
 
 export default async function Classes() {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return null;
+  if (!can(ctx, "CLASSES")) redirect("/dashboard");
   const [classes, subjects, teachers] = await Promise.all([
     db.class.findMany({ where: { schoolId: ctx.schoolId }, include: { classTeacher: { include: { user: true } }, _count: { select: { students: true } }, subjects: { include: { subject: true, teacher: { include: { user: true } } } } }, orderBy: { name: "asc" } }),
     db.subject.findMany({ where: { schoolId: ctx.schoolId }, orderBy: { name: "asc" } }),

@@ -2,13 +2,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCtx, notify } from "@/lib/scope";
+import { can, getCtx, notify } from "@/lib/scope";
 
 const schema = z.object({ title: z.string().trim().min(3).max(120), body: z.string().trim().min(3).max(4000), audience: z.enum(["ALL", "TEACHERS", "PARENTS"]), pinned: z.string().optional() });
 
 export async function postAnnouncement(_: { error?: string; ok?: boolean } | undefined, fd: FormData) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return { error: "Only the principal can post announcements" };
+  if (!can(ctx, "ANNOUNCE")) return { error: "You do not have permission to post announcements" };
   const p = schema.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: "Title and message are required." };
   const d = p.data;
@@ -22,7 +22,7 @@ export async function postAnnouncement(_: { error?: string; ok?: boolean } | und
 
 export async function deleteAnnouncement(id: string) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return;
+  if (!can(ctx, "ANNOUNCE")) return;
   await db.announcement.deleteMany({ where: { id, schoolId: ctx.schoolId } });
   revalidatePath("/announcements");
 }

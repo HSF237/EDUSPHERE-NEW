@@ -2,13 +2,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCtx, notify, userIdsOfClassParents } from "@/lib/scope";
+import { can, getCtx, scopeClassIds, notify, userIdsOfClassParents } from "@/lib/scope";
 
 const examSchema = z.object({ classId: z.string().min(1), name: z.string().trim().min(2).max(80), maxMarks: z.coerce.number().int().min(1).max(1000), passMarks: z.coerce.number().int().min(0), startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
 
 export async function createExam(_: { error?: string; ok?: boolean } | undefined, fd: FormData) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return { error: "Only the principal can create exams" };
+  if (!can(ctx, "EXAMS")) return { error: "You do not have permission to create exams" };
   const p = examSchema.safeParse(Object.fromEntries(fd));
   if (!p.success || p.data.passMarks > p.data.maxMarks) return { error: "Check the exam details (pass marks cannot exceed max marks)." };
   const cls = await db.class.findFirst({ where: { id: p.data.classId, schoolId: ctx.schoolId } });
@@ -27,9 +27,9 @@ export async function saveMarks(input: z.infer<typeof marksSchema>) {
   if (ctx.role === "PARENT") return { error: "Not allowed" };
   const p = marksSchema.safeParse(input);
   if (!p.success) return { error: "Invalid marks" };
-  const exam = await db.exam.findFirst({ where: { id: p.data.examId, schoolId: ctx.schoolId, classId: { in: ctx.classIds } } });
+  const exam = await db.exam.findFirst({ where: { id: p.data.examId, schoolId: ctx.schoolId, classId: { in: await scopeClassIds(ctx, "EXAMS") } } });
   if (!exam) return { error: "Exam not found" };
-  if (exam.published && ctx.role !== "ADMIN") return { error: "Results are published. Ask the principal to unpublish before editing." };
+  if (exam.published && !can(ctx, "EXAMS")) return { error: "Results are published. Ask the principal to unpublish before editing." };
   if (ctx.role === "TEACHER") {
     const ok = await db.classSubject.findFirst({ where: { classId: exam.classId, subjectId: p.data.subjectId, teacherId: ctx.teacherId! } });
     if (!ok) return { error: "You do not teach this subject" };
@@ -44,7 +44,7 @@ export async function saveMarks(input: z.infer<typeof marksSchema>) {
 
 export async function setPublished(examId: string, publish: boolean) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return;
+  if (!can(ctx, "EXAMS")) return;
   const ex = await db.exam.findFirst({ where: { id: examId, schoolId: ctx.schoolId } });
   if (!ex) return;
   await db.exam.update({ where: { id: examId }, data: { published: publish } });

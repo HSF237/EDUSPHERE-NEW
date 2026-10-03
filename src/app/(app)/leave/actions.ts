@@ -25,7 +25,7 @@ export async function applyLeave(_: { error?: string; ok?: boolean } | undefined
 
 export async function decideLeave(id: string, approve: boolean) {
   const ctx = await getCtx();
-  if (ctx.role === "PARENT") return;
+  if (ctx.role === "PARENT" || (ctx.role === "TEACHER" && ctx.mode !== "CLASS")) return;
   const lr = await db.leaveRequest.findFirst({ where: { id, schoolId: ctx.schoolId, status: "PENDING", student: { classId: { in: ctx.classIds } } }, include: { student: true } });
   if (!lr) return;
   await db.leaveRequest.update({ where: { id }, data: { status: approve ? "APPROVED" : "REJECTED", decidedById: ctx.user.id } });
