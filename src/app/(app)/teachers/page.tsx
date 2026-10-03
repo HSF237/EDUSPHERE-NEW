@@ -1,0 +1,50 @@
+import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import { getCtx } from "@/lib/scope";
+import { Card, PageHeader, Table, Empty, Badge } from "@/components/ui";
+
+export const metadata = { title: "Teachers" };
+
+async function addTeacher(fd: FormData) {
+  "use server";
+  const ctx = await getCtx();
+  if (ctx.role !== "ADMIN") return;
+  const name = String(fd.get("name") ?? "").trim(); const email = String(fd.get("email") ?? "").trim().toLowerCase(); const emp = String(fd.get("employeeNo") ?? "").trim();
+  if (name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || !emp) return;
+  if (await db.user.findUnique({ where: { email } })) return;
+  const u = await db.user.create({ data: { schoolId: ctx.schoolId, email, name, role: "TEACHER", passwordHash: await bcrypt.hash("ChangeMe123!", 12) } });
+  await db.teacher.create({ data: { schoolId: ctx.schoolId, userId: u.id, employeeNo: emp, qualification: String(fd.get("qualification") ?? "") || null } });
+  revalidatePath("/teachers");
+}
+async function toggleActive(id: string) {
+  "use server";
+  const ctx = await getCtx();
+  if (ctx.role !== "ADMIN") return;
+  const u = await db.user.findFirst({ where: { id, schoolId: ctx.schoolId, role: "TEACHER" } });
+  if (u) await db.user.update({ where: { id }, data: { active: !u.active } });
+  revalidatePath("/teachers");
+}
+
+export default async function Teachers() {
+  const ctx = await getCtx();
+  if (ctx.role !== "ADMIN") return null;
+  const list = await db.teacher.findMany({ where: { schoolId: ctx.schoolId }, include: { user: true, homeroom: true, assignments: { include: { subject: true, class: true } } }, orderBy: { employeeNo: "asc" } });
+  return (
+    <>
+      <PageHeader title="Teachers" sub={`${list.length} staff members`} />
+      <Card title="Add teacher" className="mb-6"><form action={addTeacher} className="grid gap-4 sm:grid-cols-5">
+        <div className="sm:col-span-2"><label className="label" htmlFor="tn">Full name</label><input id="tn" name="name" className="input" required /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="te">Email</label><input id="te" name="email" type="email" className="input" required /></div>
+        <div><label className="label" htmlFor="tm">Employee no.</label><input id="tm" name="employeeNo" className="input" required /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="tq">Qualification</label><input id="tq" name="qualification" className="input" /></div>
+        <div className="sm:col-span-3 flex items-end justify-end"><button className="btn">Add teacher</button></div></form>
+        <p className="mt-2 text-xs text-slate-500">New accounts get the temporary password <code>ChangeMe123!</code>.</p></Card>
+      <Card flush>{list.length === 0 ? <Empty title="No teachers yet" /> : (
+        <Table head={["Name", "Employee", "Class teacher of", "Teaches", "Status", ""]}>{list.map((t) => (
+          <tr key={t.id}><td className="td font-medium">{t.user.name}<div className="text-xs font-normal text-slate-500">{t.user.email}</div></td><td className="td">{t.employeeNo}</td><td className="td">{t.homeroom.map((c) => c.name).join(", ") || "—"}</td>
+            <td className="td text-xs">{t.assignments.map((a) => `${a.subject.name} (${a.class.name})`).join(", ") || "—"}</td><td className="td"><Badge tone={t.user.active ? "green" : "red"}>{t.user.active ? "Active" : "Disabled"}</Badge></td>
+            <td className="td"><form action={toggleActive.bind(null, t.userId)}><button className="text-xs text-brand-600 hover:underline">{t.user.active ? "Disable" : "Enable"}</button></form></td></tr>))}</Table>)}</Card>
+    </>
+  );
+}
