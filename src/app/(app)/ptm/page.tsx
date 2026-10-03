@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getCtx, pickChild } from "@/lib/scope";
+import { can, getCtx, pickChild } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty, Badge } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ export const metadata = { title: "Parent meetings" };
 
 async function createEvent(fd: FormData) {
   "use server";
-  const ctx = await getCtx(); if (ctx.role !== "ADMIN") return;
+  const ctx = await getCtx(); if (!can(ctx, "PTM")) return;
   const title = String(fd.get("title") ?? "").trim(); const date = new Date(String(fd.get("date")));
   const mins = Math.min(30, Math.max(5, Number(fd.get("slotMinutes")) || 10));
   if (title.length < 3 || Number.isNaN(+date)) return;
@@ -45,7 +45,7 @@ export default async function Ptm({ searchParams }: { searchParams: Promise<{ ch
   return (
     <>
       <PageHeader title="Parent–teacher meetings" sub="Book a time with your child’s teachers." />
-      {ctx.role === "ADMIN" && (<Card title="Schedule a meeting day" className="mb-6"><form action={createEvent} className="grid gap-4 sm:grid-cols-5">
+      {can(ctx, "PTM") && (<Card title="Schedule a meeting day" className="mb-6"><form action={createEvent} className="grid gap-4 sm:grid-cols-5">
         <div className="sm:col-span-2"><label className="label" htmlFor="pt">Title</label><input id="pt" name="title" className="input" required /></div><div><label className="label" htmlFor="pd">Date</label><input id="pd" name="date" type="date" className="input" required /></div>
         <div><label className="label" htmlFor="pv">Venue</label><input id="pv" name="venue" className="input" /></div><div><label className="label" htmlFor="pm">Slot (min)</label><input id="pm" name="slotMinutes" type="number" defaultValue={10} min={5} max={30} className="input" /></div>
         <div className="sm:col-span-5 text-right"><button className="btn">Create (09:00–12:00 slots for every teacher)</button></div></form></Card>)}

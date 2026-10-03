@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { can, getCtx } from "@/lib/scope";
+import { PERMS } from "@/lib/perms";
 import { Card, DashBanner, Chip, Stat, Table, Badge, Progress, Empty } from "@/components/ui";
 import { LineChart } from "@/components/charts";
 import { SceneCampus, SceneLaptop, SceneParent } from "@/components/art";
@@ -13,6 +14,7 @@ export default async function Dashboard() {
   const ctx = await getCtx();
   if (ctx.role === "SUPER_ADMIN") return <PlatformDash />;
   if (ctx.role === "PARENT") return <ParentDash ctx={ctx} />;
+  if (ctx.role === "TEACHER" && ctx.mode === "SUBJECT") return <SubjectDash ctx={ctx} />;
   return <StaffDash ctx={ctx} />;
 }
 
@@ -39,7 +41,7 @@ async function PlatformDash() {
 
 async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
   const today = todayUTC();
-  const admin = ctx.role === "ADMIN";
+  const admin = can(ctx, "ATTENDANCE_APPROVE");
   const since = new Date(today); since.setUTCDate(since.getUTCDate() - 30);
   const [students, sessionsToday, pendingApprovals, pendingLeave, recent, grp, classes, annc, hw] = await Promise.all([
     db.student.count({ where: { schoolId: ctx.schoolId, classId: { in: ctx.classIds }, active: true } }),
@@ -69,7 +71,8 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
   const trend = trendRows.map((r) => ({ label: r.d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }), value: Number(r.n) ? (Number(r.p) / Number(r.n)) * 100 : 0 }));
   return (
     <>
-      <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />} chips={<><Chip>{students} students</Chip><Chip>{pendingLeave} leave pending</Chip><Chip>{hw} homework due</Chip></>} />
+      <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />} chips={<>{ctx.role === "TEACHER" && ctx.active && <Chip>Class teacher · {ctx.active.name}</Chip>}{ctx.position && <Chip>{ctx.position}</Chip>}<Chip>{students} students</Chip><Chip>{pendingLeave} leave pending</Chip><Chip>{hw} homework due</Chip></>} />
+      <AccessLinks ctx={ctx} />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Students" value={students} hint={`${classes.length} classes`} icon="cap" />
         <Stat label="30-day attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 80 ? "amber" : "red"} hint={`${total} records`} icon="attendance" />
@@ -95,6 +98,74 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
           {recent.length === 0 ? <p className="text-sm text-slate-500">Nothing posted yet.</p> : (
             <ul className="space-y-3">{recent.map((a) => (
               <li key={a.id}><div className="flex items-center gap-2 text-sm font-medium">{a.title}{a.pinned && <Badge tone="indigo">Pinned</Badge>}</div><div className="text-xs text-slate-500">{fmtDate(a.createdAt)}</div></li>
+            ))}</ul>
+          )}
+        </Card>
+      </div>
+    </>
+  );
+}
+
+const PERM_LINK: Record<string, string> = { STUDENTS: "/students", TEACHERS: "/teachers", CLASSES: "/classes", EXAMS: "/exams", ATTENDANCE_APPROVE: "/attendance", ANNOUNCE: "/announcements", REPORTS: "/reports", SUBSTITUTES: "/substitutes", PTM: "/ptm" };
+
+/** Shortcuts to the extra responsibilities the principal has granted this teacher. */
+function AccessLinks({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
+  if (ctx.role !== "TEACHER" || ctx.perms.length === 0) return null;
+  return (
+    <Card title={ctx.position ? `Your responsibilities — ${ctx.position}` : "Your responsibilities"} className="mb-6">
+      <div className="flex flex-wrap gap-2">
+        {PERMS.filter((p) => ctx.perms.includes(p.key)).map((p) => (
+          <Link key={p.key} href={PERM_LINK[p.key]} className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-50 px-4 text-sm font-semibold text-brand-700 ring-1 ring-brand-100 transition hover:bg-brand-100">{p.label}</Link>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+async function SubjectDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
+  const today = todayUTC();
+  const since = new Date(today); since.setUTCDate(since.getUTCDate() - 30);
+  const classId = ctx.active!.id; const t = ctx.teacherId!;
+  const mySubs = await db.classSubject.findMany({ where: { classId, teacherId: t }, include: { subject: true } });
+  const [students, portions30, hw, exams, recent] = await Promise.all([
+    db.student.count({ where: { schoolId: ctx.schoolId, classId, active: true } }),
+    db.portion.count({ where: { classId, teacherId: t, date: { gte: since } } }),
+    db.homework.count({ where: { classId, status: "ACTIVE", dueOn: { gte: today }, subject: { classes: { some: { classId, teacherId: t } } } } }),
+    db.exam.findMany({ where: { schoolId: ctx.schoolId, classId }, include: { marks: { where: { subjectId: { in: mySubs.map((m) => m.subjectId) } }, select: { id: true } } }, orderBy: { startsOn: "desc" }, take: 5 }),
+    db.portion.findMany({ where: { classId, teacherId: t }, include: { subject: true }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 5 }),
+  ]);
+  const roster = students * mySubs.length;
+  return (
+    <>
+      <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />}
+        chips={<><Chip>Subject teacher · Class {ctx.active!.name}</Chip>{ctx.position && <Chip>{ctx.position}</Chip>}{mySubs.map((m) => <Chip key={m.id}>{m.subject.name}</Chip>)}</>} />
+      <AccessLinks ctx={ctx} />
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <Stat label="Students" value={students} hint={`Class ${ctx.active!.name}`} icon="cap" />
+        <Stat label="Portions (30 days)" value={portions30} tone="indigo" icon="clipboard" hint="posted by you" />
+        <Stat label="Homework due" value={hw} tone={hw ? "amber" : "slate"} icon="book" />
+        <Stat label="Exams in class" value={exams.length} tone="green" icon="award" hint="latest 5 shown below" />
+      </div>
+      <div className="mb-6 flex flex-wrap gap-3">
+        <Link href="/portions" className="btn">Post discussed portion</Link>
+        <Link href="/exams" className="btn-ghost">Enter exam marks</Link>
+        <Link href="/homework" className="btn-ghost">Assign homework</Link>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <Card title="Exams — your marks entry" flush>
+          {exams.length === 0 ? <Empty title="No exams yet" hint="The exam coordinator or principal creates them." /> : (
+            <Table head={["Exam", "Starts", "Your marks", "Status"]}>
+              {exams.map((e) => { const n = roster ? Math.min(100, Math.round((e.marks.length / roster) * 100)) : 0; return (
+                <tr key={e.id}><td className="td font-medium"><Link className="text-brand-600 hover:underline" href={`/exams/${e.id}`}>{e.name}</Link></td><td className="td">{fmtDate(e.startsOn)}</td>
+                  <td className="td w-1/3"><div className="flex items-center gap-2"><div className="flex-1"><Progress value={n} tone={n >= 100 ? "green" : "amber"} /></div><span className="w-9 text-right text-xs">{n}%</span></div></td>
+                  <td className="td"><Badge tone={e.published ? "green" : "amber"}>{e.published ? "Published" : "Draft"}</Badge></td></tr>); })}
+            </Table>
+          )}
+        </Card>
+        <Card title="Recently discussed" action={<Link href="/portions" className="text-xs text-brand-600">View all</Link>}>
+          {recent.length === 0 ? <p className="text-sm text-slate-500">You have not posted a portion yet. Let students and parents know what you covered today.</p> : (
+            <ul className="space-y-3">{recent.map((p) => (
+              <li key={p.id}><div className="flex items-center gap-2 text-sm font-medium"><Badge tone="indigo">{p.subject.name}</Badge>{p.topic}</div><div className="text-xs text-slate-500">{fmtDate(p.date)}</div></li>
             ))}</ul>
           )}
         </Card>

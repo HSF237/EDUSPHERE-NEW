@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getCtx, notify } from "@/lib/scope";
+import { can, getCtx, notify } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty } from "@/components/ui";
 import { fmtDate, isoDate, todayUTC } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ export const metadata = { title: "Substitutes" };
 
 async function assignSub(fd: FormData) {
   "use server";
-  const ctx = await getCtx(); if (ctx.role !== "ADMIN") return;
+  const ctx = await getCtx(); if (!can(ctx, "SUBSTITUTES")) return;
   const slotId = String(fd.get("slotId")); const subId = String(fd.get("subTeacherId")); const date = new Date(String(fd.get("date")));
   if (Number.isNaN(+date)) return;
   const slot = await db.timetableSlot.findFirst({ where: { id: slotId, schoolId: ctx.schoolId }, include: { class: true } });
@@ -27,13 +27,13 @@ export default async function Substitutes() {
   const ctx = await getCtx();
   if (ctx.role === "PARENT") return null;
   const today = todayUTC();
-  const list = await db.substitute.findMany({ where: { schoolId: ctx.schoolId, date: { gte: today }, ...(ctx.role === "TEACHER" ? { OR: [{ subTeacherId: ctx.teacherId! }, { absentTeacherId: ctx.teacherId! }] } : {}) }, include: { slot: { include: { class: true, subject: true } }, sub: { include: { user: true } }, absent: { include: { user: true } } }, orderBy: { date: "asc" } });
-  const [slots, teachers] = ctx.role === "ADMIN" ? await Promise.all([db.timetableSlot.findMany({ where: { schoolId: ctx.schoolId }, include: { class: true, subject: true, teacher: { include: { user: true } } }, orderBy: [{ day: "asc" }, { period: "asc" }], take: 400 }), db.teacher.findMany({ where: { schoolId: ctx.schoolId }, include: { user: true } })]) : [[], []];
+  const list = await db.substitute.findMany({ where: { schoolId: ctx.schoolId, date: { gte: today }, ...(ctx.role === "TEACHER" && !can(ctx, "SUBSTITUTES") ? { OR: [{ subTeacherId: ctx.teacherId! }, { absentTeacherId: ctx.teacherId! }] } : {}) }, include: { slot: { include: { class: true, subject: true } }, sub: { include: { user: true } }, absent: { include: { user: true } } }, orderBy: { date: "asc" } });
+  const [slots, teachers] = can(ctx, "SUBSTITUTES") ? await Promise.all([db.timetableSlot.findMany({ where: { schoolId: ctx.schoolId }, include: { class: true, subject: true, teacher: { include: { user: true } } }, orderBy: [{ day: "asc" }, { period: "asc" }], take: 400 }), db.teacher.findMany({ where: { schoolId: ctx.schoolId }, include: { user: true } })]) : [[], []];
   const DAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return (
     <>
       <PageHeader title="Substitutes" sub="Cover for absent teachers. Conflicts with the substitute’s own timetable are blocked." />
-      {ctx.role === "ADMIN" && (
+      {can(ctx, "SUBSTITUTES") && (
         <Card title="Assign substitute" className="mb-6"><form action={assignSub} className="grid gap-4 sm:grid-cols-4">
           <div className="sm:col-span-2"><label className="label" htmlFor="ss">Period to cover</label><select id="ss" name="slotId" className="input">{slots.map((s) => <option key={s.id} value={s.id}>{DAY[s.day]} P{s.period} · {s.class.name} · {s.subject.name} ({s.teacher.user.name})</option>)}</select></div>
           <div><label className="label" htmlFor="sd">Date (must match weekday)</label><input id="sd" name="date" type="date" min={isoDate(today)} className="input" required /></div>
