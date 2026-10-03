@@ -24,7 +24,7 @@ const marksSchema = z.object({ examId: z.string(), subjectId: z.string(), entrie
 
 export async function saveMarks(input: z.infer<typeof marksSchema>) {
   const ctx = await getCtx();
-  if (ctx.role === "PARENT") return { error: "Not allowed" };
+  if (ctx.role !== "TEACHER") return { error: "Marks are entered by subject teachers." };
   const p = marksSchema.safeParse(input);
   if (!p.success) return { error: "Invalid marks" };
   const exam = await db.exam.findFirst({ where: { id: p.data.examId, schoolId: ctx.schoolId, classId: { in: await scopeClassIds(ctx, "EXAMS") } } });

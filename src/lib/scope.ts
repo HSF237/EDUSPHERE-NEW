@@ -62,7 +62,7 @@ export function userIdsOfClassParents(classId: string) {
 /** True for the principal, or a teacher the principal has granted this permission. */
 export const can = (ctx: Ctx, perm: Perm) => ctx.role === "ADMIN" || (ctx.role === "TEACHER" && ctx.perms.includes(perm));
 /** Class teacher workspace (or principal) — daily class-management tools. */
-export const isClassStaff = (ctx: Ctx) => ctx.role === "ADMIN" || (ctx.role === "TEACHER" && ctx.mode === "CLASS");
+export const isClassStaff = (ctx: Ctx) => ctx.role === "TEACHER" && ctx.mode === "CLASS";
 
 /** Class ids this person may work with: whole school if the permission grants it, else their selected class. */
 export async function scopeClassIds(ctx: Ctx, perm: Perm) {

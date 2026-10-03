@@ -13,8 +13,8 @@ const schema = z.object({
 
 export async function saveAttendance(input: z.infer<typeof schema>) {
   const ctx = await getCtx();
-  if (ctx.role !== "TEACHER" && ctx.role !== "ADMIN") return { error: "Not allowed" };
-  if (ctx.role === "TEACHER" && ctx.mode !== "CLASS") return { error: "Attendance is marked by the class teacher. Switch to your own class." };
+  if (ctx.role !== "TEACHER") return { error: "Registers are marked by class teachers. The principal reviews and approves them." };
+  if (ctx.mode !== "CLASS") return { error: "Attendance is marked by the class teacher. Switch to your own class." };
   const p = schema.safeParse(input);
   if (!p.success) return { error: "Invalid data" };
   const { classId, date, entries } = p.data;
@@ -24,12 +24,12 @@ export async function saveAttendance(input: z.infer<typeof schema>) {
   const ids = new Set((await db.student.findMany({ where: { classId, schoolId: ctx.schoolId, active: true }, select: { id: true } })).map((s) => s.id));
   const clean = entries.filter((e) => ids.has(e.studentId));
   const existing = await db.attendanceSession.findUnique({ where: { classId_date: { classId, date: d } } });
-  if (existing?.status === "APPROVED" && ctx.role !== "ADMIN") return { error: "This register is approved and locked. Ask the principal to reopen it." };
+  if (existing?.status === "APPROVED") return { error: "This register is approved and locked. Ask the principal to return it for correction." };
   await db.$transaction(async (tx) => {
     const ses = await tx.attendanceSession.upsert({
       where: { classId_date: { classId, date: d } },
-      create: { schoolId: ctx.schoolId, classId, date: d, markedById: ctx.user.id, status: ctx.role === "ADMIN" ? "APPROVED" : "PENDING" },
-      update: { markedById: ctx.user.id, status: ctx.role === "ADMIN" ? "APPROVED" : "PENDING", reviewNote: null },
+      create: { schoolId: ctx.schoolId, classId, date: d, markedById: ctx.user.id, status: "PENDING" },
+      update: { markedById: ctx.user.id, status: "PENDING", reviewNote: null },
     });
     await tx.attendanceRecord.deleteMany({ where: { sessionId: ses.id } });
     await tx.attendanceRecord.createMany({ data: clean.map((e) => ({ sessionId: ses.id, studentId: e.studentId, status: e.status })) });

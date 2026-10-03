@@ -18,12 +18,12 @@ export default async function HomeworkDetail({ params }: { params: Promise<{ id:
     <>
       <PageHeader art="homework" title={hw.title} sub={`${hw.class.name} · ${hw.subject.name} · Due ${fmtDate(hw.dueOn)}`}>
         <Badge tone={hw.status === "ACTIVE" ? "green" : "slate"}>{hw.status.toLowerCase()}</Badge>
-        {hw.status === "ACTIVE" && <form action={closeHomework.bind(null, hw.id)}><button className="btn-ghost">Close homework</button></form>}
+        {ctx.role === "TEACHER" && hw.status === "ACTIVE" && <form action={closeHomework.bind(null, hw.id)}><button className="btn-ghost">Close homework</button></form>}
       </PageHeader>
       <Card className="mb-6"><p className="whitespace-pre-wrap text-sm">{hw.description}</p></Card>
       <Card title={`Completion · ${done}/${students.length}`} flush>
         <ul className="divide-y divide-slate-100">{students.map((s) => (
-          <li key={s.id} className="flex items-center justify-between px-5 py-2.5 text-sm"><span><span className="mr-3 text-slate-400">{s.rollNo}</span>{s.name}</span><Toggle homeworkId={hw.id} studentId={s.id} done={!!s.submissions[0]?.done} /></li>
+          <li key={s.id} className="flex items-center justify-between px-5 py-2.5 text-sm"><span><span className="mr-3 text-slate-400">{s.rollNo}</span>{s.name}</span>{ctx.role === "TEACHER" ? <Toggle homeworkId={hw.id} studentId={s.id} done={!!s.submissions[0]?.done} /> : <Badge tone={s.submissions[0]?.done ? "green" : "slate"}>{s.submissions[0]?.done ? "done" : "pending"}</Badge>}</li>
         ))}</ul>
       </Card>
     </>
