@@ -5,7 +5,7 @@ const config: Config = {
     extend: {
       fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"] },
       colors: {
-        brand: { 50: "#f1f3ff", 100: "#e0e7ff", 200: "#c7d2fe", 300: "#a5b4fc", 400: "#818cf8", 500: "#6366f1", 600: "#4f46e5", 700: "#4338ca", 800: "#3730a3", 900: "#312e81", 950: "#1e1b4b" },
+        brand: Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((n) => [n, `rgb(var(--brand-${n}) / <alpha-value>)`])),
         coral: { 400: "#ff8a78", 500: "#ff6b57", 600: "#ee5440" },
         sun: { 50: "#fff8e1", 400: "#ffd35c", 500: "#ffc83d" },
       },
