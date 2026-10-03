@@ -2,6 +2,7 @@
 import { useActionState } from "react";
 import { loginAction } from "@/lib/actions-auth";
 import { SceneClassroom } from "@/components/art";
+import Link from "next/link";
 import { Icon } from "@/components/icons";
 
 export default function LoginPage() {
@@ -17,7 +18,7 @@ export default function LoginPage() {
           <h1 className="mt-8 text-4xl font-extrabold leading-tight tracking-tight text-brand-950">One platform for every school, teacher and parent.</h1>
           <p className="mt-3 max-w-md text-slate-600">Attendance, homework, timetables, exams, leave and messaging — with every school’s data kept separate and secure.</p>
         </div>
-        <p className="text-sm text-slate-400">© EduSphere</p>
+        <p className="text-sm text-slate-400">© EduSphere · <Link className="hover:underline" href="/terms">Terms</Link> · <Link className="hover:underline" href="/privacy">Privacy</Link></p>
       </section>
       <section className="flex items-center justify-center p-6">
         <form action={action} className="card w-full max-w-sm space-y-4 p-7">
@@ -35,6 +36,7 @@ export default function LoginPage() {
             <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
           </div>
           <button className="btn w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
+          <p className="text-center text-xs text-slate-500">By signing in you agree to our <Link className="font-semibold text-brand-700 underline" href="/terms">Terms</Link> and <Link className="font-semibold text-brand-700 underline" href="/privacy">Privacy Policy</Link>. <Link className="underline" href="/">Back to home</Link></p>
         </form>
       </section>
     </main>
