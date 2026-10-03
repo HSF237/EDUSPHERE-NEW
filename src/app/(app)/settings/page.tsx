@@ -3,11 +3,18 @@ import { getCtx } from "@/lib/scope";
 import { Card, PageHeader } from "@/components/ui";
 import { PasswordForm } from "./form";
 import { changePassword } from "./actions";
+import { BrandingForm } from "./branding-form";
+import { PushToggle } from "@/components/push-toggle";
+import { LangSwitch } from "@/components/lang-switch";
+import { getLang } from "@/lib/i18n";
 
 export const metadata = { title: "Settings" };
 
 export default async function Settings() {
-  const { user } = await getCtx();
+  const { user, schoolId } = await getCtx();
+  const lang = await getLang();
+  const sch = user.role === "ADMIN" ? await db.school.findUnique({ where: { id: schoolId } }) : null;
+  const vapid = process.env.VAPID_PUBLIC_KEY ?? "";
   return (
     <>
       <PageHeader title="Settings" sub="Your account and security." />
@@ -21,6 +28,13 @@ export default async function Settings() {
             </div>
           </Card>
         )}
+        {sch && (
+          <Card title="School branding" className="lg:col-span-2">
+            <BrandingForm colour={sch.brandColor ?? ""} signatoryName={sch.signatoryName ?? ""} signatoryTitle={sch.signatoryTitle ?? ""} hasLogo={!!sch.logoFileId} hasSignature={!!sch.signatureFileId} />
+          </Card>
+        )}
+        <Card title="Language"><p className="mb-3 text-sm text-slate-600">Choose English, മലയാളം or हिन्दी for menus and headings on this device.</p><LangSwitch current={lang} /></Card>
+        <Card title="Phone notifications">{vapid ? <PushToggle publicKey={vapid} /> : <p className="text-sm text-slate-500">Phone notifications are not switched on for this school yet. You can still install EduSphere on your home screen from your browser menu.</p>}</Card>
         <Card title="Change password"><PasswordForm action={changePassword} /></Card>
       </div>
     </>

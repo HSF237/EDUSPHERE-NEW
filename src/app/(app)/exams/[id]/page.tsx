@@ -29,7 +29,7 @@ export default async function ExamDetail({ params, searchParams }: { params: Pro
           <div className="flex flex-wrap gap-1 border-b border-slate-100 px-5 py-3">{teachable.map((s) => <Link key={s.id} href={`/exams/${exam.id}?subject=${s.id}`} className={`rounded-full px-3 py-1 text-xs font-medium ${s.id === subject?.id ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600"}`}>{s.name}</Link>)}</div>
           {subject ? <MarksEntry key={subject.id} examId={exam.id} subjectId={subject.id} max={exam.maxMarks} rows={students.map((s) => ({ id: s.id, name: s.name, rollNo: s.rollNo, score: String(s.marks.find((m) => m.subjectId === subject.id)?.score ?? "") }))} /> : <p className="p-5 text-sm text-slate-500">You do not teach any subject in this class.</p>}
         </Card>}
-        <Card title="Results" className={ctx.role === "TEACHER" ? "lg:col-span-3" : "lg:col-span-5"} flush>
+        <Card title="Results" className={ctx.role === "TEACHER" ? "lg:col-span-3" : "lg:col-span-5"} flush action={<Link className="btn-ghost !px-3 !py-1.5 text-xs" href={`/exams/${exam.id}/report?all=1`}>Print all report cards</Link>}>
           <Table head={["Roll", "Student", "Total", "%", "Grade", "Rank", ""]}>{results.map((r) => { const rank = ranked.findIndex((x) => x.s.id === r.s.id) + 1; return (
             <tr key={r.s.id}><td className="td">{r.s.rollNo}</td><td className="td font-medium">{r.s.name}</td><td className="td">{r.tot}</td><td className="td">{r.pct}%</td>
               <td className="td">{r.complete ? <Badge tone={r.fails ? "red" : "green"}>{r.fails ? "Fail" : grade(r.pct)}</Badge> : <Badge>pending</Badge>}</td><td className="td">{rank || "—"}</td>

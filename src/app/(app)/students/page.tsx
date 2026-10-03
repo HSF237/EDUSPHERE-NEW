@@ -26,7 +26,7 @@ export default async function Students({ searchParams }: { searchParams: Promise
     <>
       <PageHeader title="Students" sub={`${total} students`}>
         <form className="flex w-full flex-wrap gap-2 sm:w-auto"><input name="q" defaultValue={sp.q} placeholder="Search name or admission no." className="input w-full sm:w-64" aria-label="Search students" />
-          <select name="class" defaultValue={sp.class ?? ""} className="input w-28" aria-label="Class"><option value="">All</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn-ghost">Filter</button></form>
+          <select name="class" defaultValue={sp.class ?? ""} className="input w-28" aria-label="Class"><option value="">All</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn-ghost">Filter</button>{sp.class && scope.includes(sp.class) && <Link className="btn-ghost" href={`/students/ids?class=${sp.class}`}>Print ID cards</Link>}</form>
       </PageHeader>
       {can(ctx, "STUDENTS") && (
         <Card title="Add student" className="mb-6"><form action={createStudent} className="grid gap-4 sm:grid-cols-5">
