@@ -88,7 +88,7 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
                 <tr key={c.id}>
                   <td className="td font-medium">{c.name}</td>
                   <td className="td w-1/2"><div className="flex items-center gap-3"><div className="flex-1"><Progress value={rate} tone={rate >= 90 ? "green" : rate >= 80 ? "amber" : "red"} /></div><span className="w-10 text-right text-xs">{rate}%</span></div></td>
-                  <td className="td">{marked ? <Badge tone="green">Marked</Badge> : <Link href={`/attendance?class=${c.id}`} className="text-sm font-medium text-brand-600 hover:underline">Mark now</Link>}</td>
+                  <td className="td">{marked ? <Badge tone="green">Marked</Badge> : ctx.role === "ADMIN" ? <Badge>pending</Badge> : <Link href={`/attendance?class=${c.id}`} className="text-sm font-medium text-brand-600 hover:underline">Mark now</Link>}</td>
                 </tr>
               ))}
             </Table>
