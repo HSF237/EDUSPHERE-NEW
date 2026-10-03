@@ -7,6 +7,11 @@ export function MobileMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    const on = () => setOpen(true);
+    window.addEventListener("es:menu", on);
+    return () => window.removeEventListener("es:menu", on);
+  }, []);
   return (
     <>
       <button onClick={() => setOpen(true)} className="rounded-xl p-2 text-slate-700 hover:bg-slate-100" aria-label="Open menu"><Icon name="menu" /></button>

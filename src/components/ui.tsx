@@ -5,14 +5,14 @@ import { Spot, spotForTitle, type SpotName } from "./art";
 export function PageHeader({ title, sub, children, art }: { title: string; sub?: string; children?: React.ReactNode; art?: SpotName | false }) {
   const spot = art === false ? undefined : art ?? spotForTitle(title);
   return (
-    <div className="blob-bg animate-fade-up relative mb-7 overflow-hidden rounded-3xl border border-white bg-gradient-to-br from-white via-white to-brand-50 p-6 shadow-soft sm:p-7">
-      <div className="relative z-10 flex items-center justify-between gap-6">
+    <div className="blob-bg animate-fade-up relative mb-7 overflow-hidden rounded-3xl border border-white bg-gradient-to-br from-white via-white to-brand-50 p-5 shadow-soft sm:p-7">
+      <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-brand-950 sm:text-[28px]">{title}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-brand-950 sm:text-[28px]">{title}</h1>
           {sub && <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">{sub}</p>}
           {children && <div className="mt-4 flex flex-wrap items-center gap-2">{children}</div>}
         </div>
-        {spot && <Spot name={spot} className="animate-float hidden h-28 w-auto shrink-0 sm:block lg:h-36" />}
+        {spot && <Spot name={spot} className="animate-float h-16 w-auto shrink-0 sm:h-28 lg:h-36" />}
       </div>
     </div>
   );
@@ -21,16 +21,16 @@ export function PageHeader({ title, sub, children, art }: { title: string; sub?:
 /** Illustrated welcome banner used on the dashboards. */
 export function DashBanner({ title, sub, scene, chips }: { title: string; sub?: string; scene: React.ReactNode; chips?: React.ReactNode }) {
   return (
-    <div className="animate-fade-up relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-6 text-white shadow-lift sm:p-8">
+    <div className="animate-fade-up relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-5 text-white shadow-lift sm:p-8">
       <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/10" />
       <div className="pointer-events-none absolute -bottom-24 left-1/3 h-60 w-60 rounded-full bg-sun-500/20" />
-      <div className="relative z-10 flex items-center justify-between gap-6">
-        <div className="min-w-0 flex-1">
+      <div className="relative z-10 flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-6">
+        <div className="min-w-0 flex-1 self-stretch">
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
           {sub && <p className="mt-2 max-w-lg text-sm leading-relaxed text-brand-100">{sub}</p>}
           {chips && <div className="mt-5 flex flex-wrap gap-2">{chips}</div>}
         </div>
-        <div className="hidden w-64 shrink-0 sm:block lg:w-80 [&_svg]:animate-float [&_svg]:drop-shadow-[0_18px_30px_rgba(30,27,75,.35)]">{scene}</div>
+        <div className="-mb-2 w-52 shrink-0 sm:mb-0 sm:w-64 lg:w-80 [&_svg]:animate-float [&_svg]:drop-shadow-[0_18px_30px_rgba(30,27,75,.35)]">{scene}</div>
       </div>
     </div>
   );
@@ -60,13 +60,13 @@ const statTone = {
 export function Stat({ label, value, hint, tone = "slate", icon }: { label: string; value: React.ReactNode; hint?: string; tone?: keyof typeof statTone; icon?: IconName }) {
   const [txt, chip, def] = statTone[tone];
   return (
-    <div className="card animate-fade-up flex items-start justify-between gap-3 p-5 transition hover:-translate-y-0.5 hover:shadow-lift">
+    <div className="card animate-fade-up flex items-start justify-between gap-2 p-4 transition hover:-translate-y-0.5 sm:gap-3 sm:p-5 hover:shadow-lift">
       <div className="min-w-0">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-        <div className={cn("mt-2 text-3xl font-extrabold tracking-tight", txt)}>{value}</div>
+        <div className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-500 sm:text-xs">{label}</div>
+        <div className={cn("mt-1.5 text-2xl font-extrabold sm:mt-2 sm:text-3xl tracking-tight", txt)}>{value}</div>
         {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
       </div>
-      <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-2xl", chip)}><Icon name={icon ?? def} className="h-5 w-5" /></span>
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-11 sm:w-11 sm:rounded-2xl", chip)}><Icon name={icon ?? def} className="h-[18px] w-[18px] sm:h-5 sm:w-5" /></span>
     </div>
   );
 }

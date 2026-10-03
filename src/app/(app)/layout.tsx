@@ -5,6 +5,7 @@ import { NAV } from "@/components/nav";
 import { logoutAction } from "@/lib/actions-auth";
 import { NavLinks } from "@/components/shell/nav-links";
 import { MobileMenu } from "@/components/shell/mobile-menu";
+import { BottomNav } from "@/components/shell/bottom-nav";
 import { Icon } from "@/components/icons";
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
@@ -25,6 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
   const items = NAV.filter((n) => n.roles.includes(user.role)).map((n) => ({ href: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined }));
+  const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ["/dashboard", "/attendance", "/homework", "/messages"])
+    .map((h) => items.find((i) => i.href === h)).filter((i): i is (typeof items)[number] => !!i);
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   const school = user.school?.name ?? "All schools";
   const userCard = (
@@ -71,7 +74,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-6xl p-4 sm:p-8">{children}</main>
+        <main id="main" className="mx-auto max-w-6xl p-4 pb-28 sm:p-8 lg:pb-8">{children}</main>
+        <BottomNav items={quick.map((q) => ({ href: q.href, label: q.label.split(" ")[0], icon: q.icon, badge: q.badge }))} />
       </div>
     </div>
   );
