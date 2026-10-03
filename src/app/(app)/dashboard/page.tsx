@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { Card, DashBanner, Chip, Stat, Table, Badge, Progress, Empty } from "@/components/ui";
+import { LineChart } from "@/components/charts";
 import { SceneCampus, SceneLaptop, SceneParent } from "@/components/art";
 import { fmtDate, pct, todayUTC } from "@/lib/utils";
 
@@ -61,6 +63,10 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
     const marked = await db.attendanceSession.count({ where: { classId: c.id, date: today } });
     return { c, rate: pct(p, t), marked: marked > 0 };
   }));
+  const trendRows = ctx.classIds.length
+    ? await db.$queryRaw<{ d: Date; p: bigint; n: bigint }[]>(Prisma.sql`SELECT s."date" d, sum(case when r."status" in ('PRESENT','LATE') then 1 else 0 end) p, count(*) n FROM "AttendanceRecord" r JOIN "AttendanceSession" s ON s.id = r."sessionId" WHERE s."classId" IN (${Prisma.join(ctx.classIds)}) AND s."date" >= ${since} AND s."status" <> 'DRAFT' GROUP BY 1 ORDER BY 1`)
+    : [];
+  const trend = trendRows.map((r) => ({ label: r.d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }), value: Number(r.n) ? (Number(r.p) / Number(r.n)) * 100 : 0 }));
   return (
     <>
       <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />} chips={<><Chip>{students} students</Chip><Chip>{pendingLeave} leave pending</Chip><Chip>{hw} homework due</Chip></>} />
@@ -70,6 +76,7 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
         <Stat label={admin ? "Attendance to approve" : "Classes marked today"} value={admin ? pendingApprovals : `${sessionsToday}/${classes.length}`} tone="indigo" icon="check" />
         <Stat label="Pending leave requests" value={pendingLeave} tone={pendingLeave ? "amber" : "slate"} hint={`${hw} homework due soon`} icon="send" />
       </div>
+      {trend.length > 2 && <Card title="Attendance — last 30 days" className="mb-6" action={<span className="text-xs text-slate-400">% present or late</span>}><LineChart id="dash-att" points={trend} ma={5} min={60} max={100} height={170} /></Card>}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Classes — today" className="lg:col-span-2" flush>
           {perClass.length === 0 ? <Empty title="No classes assigned yet" hint="Ask your school admin to assign you to a class." /> : (
