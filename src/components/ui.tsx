@@ -1,15 +1,17 @@
 import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "./icons";
 import { Spot, spotForTitle, type SpotName } from "./art";
+import { getLang, tr } from "@/lib/i18n";
 
-export function PageHeader({ title, sub, children, art }: { title: string; sub?: string; children?: React.ReactNode; art?: SpotName | false }) {
+export async function PageHeader({ title, sub, children, art }: { title: string; sub?: string; children?: React.ReactNode; art?: SpotName | false }) {
+  const lang = await getLang();
   const spot = art === false ? undefined : art ?? spotForTitle(title);
   return (
     <div className="blob-bg animate-fade-up relative mb-7 overflow-hidden rounded-3xl border border-white bg-gradient-to-br from-white via-white to-brand-50 p-5 shadow-soft sm:p-7">
       <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-extrabold tracking-tight text-brand-950 sm:text-[28px]">{title}</h1>
-          {sub && <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">{sub}</p>}
+          <h1 className="text-xl font-extrabold tracking-tight text-brand-950 sm:text-[28px]">{tr(lang, title)}</h1>
+          {sub && <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">{tr(lang, sub)}</p>}
           {children && <div className="mt-4 flex flex-wrap items-center gap-2">{children}</div>}
         </div>
         {spot && <Spot name={spot} className="animate-float h-16 w-auto shrink-0 sm:h-28 lg:h-36" />}
@@ -40,10 +42,11 @@ export function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur">{children}</span>;
 }
 
-export function Card({ title, action, children, className, flush }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; flush?: boolean }) {
+export async function Card({ title, action, children, className, flush }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; flush?: boolean }) {
+  const lang = await getLang();
   return (
     <section className={cn("card animate-fade-up", className)}>
-      {title && <div className="card-h"><h2>{title}</h2>{action}</div>}
+      {title && <div className="card-h"><h2>{tr(lang, title)}</h2>{action}</div>}
       <div className={flush ? "" : "card-b"}>{children}</div>
     </section>
   );
@@ -57,12 +60,13 @@ const statTone = {
   indigo: ["text-brand-600", "bg-brand-100 text-brand-600", "bolt"],
 } as const;
 
-export function Stat({ label, value, hint, tone = "slate", icon }: { label: string; value: React.ReactNode; hint?: string; tone?: keyof typeof statTone; icon?: IconName }) {
+export async function Stat({ label, value, hint, tone = "slate", icon }: { label: string; value: React.ReactNode; hint?: string; tone?: keyof typeof statTone; icon?: IconName }) {
+  const lang = await getLang();
   const [txt, chip, def] = statTone[tone];
   return (
     <div className="card animate-fade-up flex items-start justify-between gap-2 p-4 transition hover:-translate-y-0.5 sm:gap-3 sm:p-5 hover:shadow-lift">
       <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-500 sm:text-xs">{label}</div>
+        <div className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-500 sm:text-xs">{tr(lang, label)}</div>
         <div className={cn("mt-1.5 text-2xl font-extrabold sm:mt-2 sm:text-3xl tracking-tight", txt)}>{value}</div>
         {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
       </div>
@@ -84,12 +88,13 @@ const emptyMap: [RegExp, SpotName][] = [
   [/notification/i, "notifications"], [/leave/i, "leave"], [/diary/i, "diary"], [/class/i, "classes"], [/teacher/i, "teachers"], [/meeting|booking/i, "ptm"],
   [/substitut/i, "substitutes"], [/attendance|absen|register/i, "attendance"], [/timetable|period/i, "timetable"],
 ];
-export function Empty({ title, hint, art }: { title: string; hint?: string; art?: SpotName }) {
+export async function Empty({ title, hint, art }: { title: string; hint?: string; art?: SpotName }) {
+  const lang = await getLang();
   const spot = art ?? emptyMap.find(([r]) => r.test(title))?.[1] ?? "empty";
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
       <Spot name={spot} className="h-36 w-auto" />
-      <p className="mt-3 text-base font-semibold text-slate-800">{title}</p>
+      <p className="mt-3 text-base font-semibold text-slate-800">{tr(lang, title)}</p>
       {hint && <p className="mt-1 max-w-sm text-sm text-slate-500">{hint}</p>}
     </div>
   );
@@ -104,11 +109,12 @@ export function Progress({ value, tone = "indigo" }: { value: number; tone?: "in
   );
 }
 
-export function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+export async function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+  const lang = await getLang();
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead className="border-b border-slate-100 bg-slate-50/70"><tr>{head.map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+        <thead className="border-b border-slate-100 bg-slate-50/70"><tr>{head.map((h) => <th key={h} className="th">{tr(lang, h)}</th>)}</tr></thead>
         <tbody className="divide-y divide-slate-100 [&>tr]:transition-colors [&>tr:hover]:bg-brand-50/40">{children}</tbody>
       </table>
     </div>

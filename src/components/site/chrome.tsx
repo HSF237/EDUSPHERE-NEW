@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { LEGAL_LINKS, SITE } from "@/lib/site";
+import { LangSwitch } from "@/components/lang-switch";
+import { getLang } from "@/lib/i18n";
 
 const NAV = [
   { href: "/#roles", label: "Who it’s for" },
@@ -26,7 +28,8 @@ export function Logo({ light = false }: { light?: boolean }) {
   );
 }
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const lang = await getLang();
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5">
@@ -35,6 +38,7 @@ export function SiteHeader() {
           {NAV.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-brand-700">{n.label}</Link>)}
         </nav>
         <div className="flex items-center gap-2">
+          <LangSwitch current={lang} />
           <Link href="/register-school" className="btn-ghost hidden sm:inline-flex">Create school</Link>
           <Link href="/login" className="btn">Sign in</Link>
           <details className="relative md:hidden">

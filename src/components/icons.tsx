@@ -24,6 +24,7 @@ const P: Record<string, string> = {
   arrow: "M5 12h14M13 5l7 7-7 7",
   check: "M5 12.5l4.5 4.5L19 7",
   shield: "M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z M9 12l2 2 4-4",
+  wallet: "M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2zM16 14h2",
   bolt: "M13 2 4 14h7l-1 8 9-12h-7z",
 };
 export type IconName = keyof typeof P;
