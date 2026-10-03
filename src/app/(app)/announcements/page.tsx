@@ -27,6 +27,7 @@ export default async function Announcements() {
               {can(ctx, "ANNOUNCE") && <form action={deleteAnnouncement.bind(null, a.id)}><button className="text-xs text-red-600 hover:underline">Delete</button></form>}
             </div>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{a.body}</p>
+            {a.fileId && <a className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 hover:underline" href={`/api/files/${a.fileId}`} target="_blank" rel="noreferrer">📎 Open attachment</a>}
           </Card>
         ))}
       </div>

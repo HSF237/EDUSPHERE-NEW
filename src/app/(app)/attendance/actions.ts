@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { can, getCtx, notify } from "@/lib/scope";
+import { normalizePhone, sendAlert } from "@/lib/alerts";
+import { fmtDate } from "@/lib/utils";
 
 const statuses = ["PRESENT", "ABSENT", "LATE", "EXCUSED"] as const;
 const schema = z.object({
@@ -48,6 +50,12 @@ export async function reviewAttendance(sessionId: string, approve: boolean, note
   if (approve) {
     const parents = ses.records.filter((r) => r.status === "ABSENT").flatMap((r) => r.student.guardians.map((g) => g.userId));
     await notify(ctx.schoolId, [...new Set(parents)], "Absence recorded", `Your child was marked absent in class ${ses.class.name}.`, "/attendance");
+    // WhatsApp / SMS alert to each absent child's parents who have a phone number saved
+    const absent = ses.records.filter((r) => r.status === "ABSENT");
+    const users = await db.user.findMany({ where: { id: { in: absent.flatMap((r) => r.student.guardians.map((g) => g.userId)) } }, select: { id: true, phone: true } });
+    const phones = new Map(users.map((u) => [u.id, normalizePhone(u.phone)]));
+    const school = ctx.user.school?.name ?? "School";
+    await Promise.allSettled(absent.flatMap((r) => [...new Set(r.student.guardians.map((g) => phones.get(g.userId)).filter((p): p is string => !!p))].map((phone) => sendAlert({ schoolId: ctx.schoolId, studentId: r.studentId, phone, kind: "absence", body: `${school}: ${r.student.name} (Class ${ses.class.name}) was marked absent on ${fmtDate(ses.date)}. Please contact the class teacher if this is unexpected.` }))));
   } else {
     await notify(ctx.schoolId, [ses.markedById], "Attendance returned", `Class ${ses.class.name} register needs correction. ${note ?? ""}`, "/attendance");
   }

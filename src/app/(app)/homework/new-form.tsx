@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { createHomework } from "./actions";
+import { ACCEPT_ALL } from "@/lib/fileTypes";
 
 type Opt = { id: string; name: string };
 export function NewHomework({ classes, subjectsByClass }: { classes: Opt[]; subjectsByClass: Record<string, Opt[]> }) {
@@ -14,6 +15,7 @@ export function NewHomework({ classes, subjectsByClass }: { classes: Opt[]; subj
       <div className="sm:col-span-2"><label className="label" htmlFor="ht">Title</label><input id="ht" name="title" className="input" required maxLength={120} /></div>
       <div className="sm:col-span-2"><label className="label" htmlFor="hd">Instructions</label><textarea id="hd" name="description" rows={3} className="input" required maxLength={2000} /></div>
       <div><label className="label" htmlFor="hdue">Due date</label><input id="hdue" name="dueOn" type="date" className="input" required /></div>
+      <div><label className="label" htmlFor="hf">Attachment (optional, max 3 MB)</label><input id="hf" name="file" type="file" accept={ACCEPT_ALL} className="input !py-2" /></div>
       <div className="flex items-end justify-end"><button className="btn" disabled={pending}>{pending ? "Posting…" : "Post homework"}</button></div>
     </form>
   );

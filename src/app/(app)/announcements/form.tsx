@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useRef } from "react";
 import { postAnnouncement } from "./actions";
+import { ACCEPT_ALL } from "@/lib/fileTypes";
 
 export function AnnForm() {
   const ref = useRef<HTMLFormElement>(null);
@@ -12,6 +13,7 @@ export function AnnForm() {
       <div className="sm:col-span-2"><label className="label" htmlFor="at">Title</label><input id="at" name="title" className="input" required maxLength={120} /></div>
       <div><label className="label" htmlFor="aa">Audience</label><select id="aa" name="audience" className="input"><option value="ALL">Everyone</option><option value="TEACHERS">Teachers</option><option value="PARENTS">Parents</option></select></div>
       <div className="sm:col-span-3"><label className="label" htmlFor="ab">Message</label><textarea id="ab" name="body" rows={4} className="input" required maxLength={4000} /></div>
+      <div className="sm:col-span-3"><label className="label" htmlFor="af">Attach a circular or image (optional, max 3 MB)</label><input id="af" name="file" type="file" accept={ACCEPT_ALL} className="input !py-2" /></div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="pinned" className="accent-brand-600" /> Pin to top</label>
       <div className="sm:col-span-2 text-right"><button className="btn" disabled={pending}>{pending ? "Posting…" : "Post announcement"}</button></div>
     </form>

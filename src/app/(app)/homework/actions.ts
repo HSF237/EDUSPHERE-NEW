@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCtx, notify, userIdsOfClassParents } from "@/lib/scope";
+import { isError, readUpload, storeFile } from "@/lib/files";
 
 const schema = z.object({
   classId: z.string().min(1), subjectId: z.string().min(1),
@@ -20,7 +21,10 @@ export async function createHomework(_: { error?: string } | undefined, fd: Form
   if (!ctx.classIds.includes(d.classId)) return { error: "You cannot assign homework to this class" };
   const cs = await db.classSubject.findFirst({ where: { classId: d.classId, subjectId: d.subjectId, ...(ctx.role === "TEACHER" ? { teacherId: ctx.teacherId! } : {}) } });
   if (!cs) return { error: "You do not teach this subject in this class" };
-  const hw = await db.homework.create({ data: { schoolId: ctx.schoolId, classId: d.classId, subjectId: d.subjectId, teacherId: cs.teacherId, title: d.title, description: d.description, dueOn: new Date(d.dueOn) } });
+  const up = await readUpload(fd);
+  if (isError(up)) return { error: up.error };
+  const fileId = up ? await storeFile(ctx.schoolId, ctx.user.id, up) : null;
+  const hw = await db.homework.create({ data: { schoolId: ctx.schoolId, classId: d.classId, subjectId: d.subjectId, teacherId: cs.teacherId, title: d.title, description: d.description, dueOn: new Date(d.dueOn), fileId } });
   const students = await db.student.findMany({ where: { classId: d.classId, active: true }, select: { id: true } });
   await db.homeworkSubmission.createMany({ data: students.map((s) => ({ homeworkId: hw.id, studentId: s.id })) });
   await notify(ctx.schoolId, await userIdsOfClassParents(d.classId), "New homework", d.title, "/homework");
