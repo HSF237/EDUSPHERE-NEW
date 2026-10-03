@@ -36,10 +36,10 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
   const list = await db.homework.findMany({ where: { schoolId: ctx.schoolId, classId: { in: ctx.classIds }, ...(sp.show === "closed" ? { status: "CLOSED" } : { status: "ACTIVE" }) }, include: { class: true, subject: true, submissions: true }, orderBy: { dueOn: "desc" }, take: 100 });
   return (
     <>
-      <PageHeader title="Homework" sub="Assign work and track completion per student.">
+      <PageHeader title="Homework" sub={ctx.role === "ADMIN" ? "Homework assigned across all classes (read-only)." : "Assign work and track completion per student."}>
         <Link className="btn-ghost" href={sp.show === "closed" ? "/homework" : "/homework?show=closed"}>{sp.show === "closed" ? "Show active" : "Show closed"}</Link>
       </PageHeader>
-      <Card title="Assign new homework" className="mb-6"><NewHomework classes={classes.map((c) => ({ id: c.id, name: c.name }))} subjectsByClass={subjectsByClass} /></Card>
+      {ctx.role === "TEACHER" && <Card title="Assign new homework" className="mb-6"><NewHomework classes={classes.map((c) => ({ id: c.id, name: c.name }))} subjectsByClass={subjectsByClass} /></Card>}
       <Card title={sp.show === "closed" ? "Closed homework" : "Active homework"} flush>
         {list.length === 0 ? <Empty title="Nothing here yet" /> : (
           <Table head={["Title", "Class", "Subject", "Due", "Completed"]}>

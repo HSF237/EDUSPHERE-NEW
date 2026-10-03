@@ -9,7 +9,7 @@ export const metadata = { title: "Class diary" };
 async function addEntry(fd: FormData) {
   "use server";
   const ctx = await getCtx();
-  if (ctx.role === "PARENT") return;
+  if (ctx.role !== "TEACHER") return;
   const classId = String(fd.get("classId")); const subject = String(fd.get("subject") ?? "").trim(); const topic = String(fd.get("topic") ?? "").trim();
   if (!ctx.classIds.includes(classId) || !subject || !topic) return;
   const teacherId = ctx.teacherId ?? (await db.teacher.findFirst({ where: { schoolId: ctx.schoolId } }))?.id;
@@ -21,17 +21,17 @@ async function addEntry(fd: FormData) {
 export default async function Diary({ searchParams }: { searchParams: Promise<{ class?: string; child?: string }> }) {
   const ctx = await getCtx();
   const sp = await searchParams;
-  let classIds = ctx.classIds; let sub = "";
+  let classIds = ctx.role === "ADMIN" ? (await db.class.findMany({ where: { schoolId: ctx.schoolId }, select: { id: true } })).map((c) => c.id) : ctx.classIds; let sub = "";
   if (ctx.role === "PARENT") { const { kid } = await pickChild(ctx, sp.child); classIds = kid ? [kid.classId] : []; sub = kid ? `${kid.name} · Class ${kid.class.name}` : ""; }
   const classes = await db.class.findMany({ where: { id: { in: classIds } }, orderBy: { name: "asc" } });
   const sel = classes.find((c) => c.id === sp.class)?.id;
   const list = await db.diaryEntry.findMany({ where: { schoolId: ctx.schoolId, classId: sel ?? { in: classIds } }, include: { class: true }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 60 });
   return (
     <>
-      <PageHeader title="Class diary" sub={sub || "What was taught in class, day by day."}>
+      <PageHeader title="Class diary" sub={sub || (ctx.role === "ADMIN" ? "Read-only view of what teachers have recorded in every class." : "What was taught in class, day by day.")}>
         {ctx.role !== "PARENT" && <form className="flex gap-2"><select name="class" defaultValue={sel ?? ""} className="input" aria-label="Class"><option value="">All classes</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn-ghost">Filter</button></form>}
       </PageHeader>
-      {ctx.role !== "PARENT" && (
+      {ctx.role === "TEACHER" && (
         <Card title="New diary entry" className="mb-6"><form action={addEntry} className="grid gap-4 sm:grid-cols-4">
           <div><label className="label" htmlFor="dc">Class</label><select id="dc" name="classId" className="input">{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           <div><label className="label" htmlFor="dd">Date</label><input id="dd" name="date" type="date" defaultValue={isoDate(todayUTC())} className="input" /></div>
