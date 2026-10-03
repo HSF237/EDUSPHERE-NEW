@@ -20,7 +20,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const g = (k: string) => grp.find((x) => x.status === k)?._count ?? 0;
   return (
     <>
-      <PageHeader title={s.name} sub={`Class ${s.class.name} · Roll ${s.rollNo} · ${s.admissionNo}`} />
+      <PageHeader art="students" title={s.name} sub={`Class ${s.class.name} · Roll ${s.rollNo} · ${s.admissionNo}`} />
       <div className="mb-6 grid gap-4 sm:grid-cols-4"><Stat label="Attendance" value={`${pct(pres, total)}%`} tone="indigo" /><Stat label="Days absent" value={g("ABSENT")} tone="red" /><Stat label="Days late" value={g("LATE")} tone="amber" /><Stat label="Date of birth" value={s.dob ? fmtDate(s.dob) : "—"} /></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Guardians">{s.guardians.length === 0 ? <p className="text-sm text-slate-500">No parent account linked.</p> : s.guardians.map((x) => <div key={x.id} className="text-sm"><b>{x.user.name}</b> · {x.user.email}</div>)}</Card>

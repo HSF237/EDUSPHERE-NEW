@@ -20,7 +20,7 @@ export default async function ExamDetail({ params, searchParams }: { params: Pro
   const ranked = [...results].filter((r) => r.complete).sort((a, b) => b.tot - a.tot);
   return (
     <>
-      <PageHeader title={`${exam.name} · ${exam.class.name}`} sub={`Max ${exam.maxMarks}, pass ${exam.passMarks} · starts ${fmtDate(exam.startsOn)}`}>
+      <PageHeader art="exams" title={`${exam.name} · ${exam.class.name}`} sub={`Max ${exam.maxMarks}, pass ${exam.passMarks} · starts ${fmtDate(exam.startsOn)}`}>
         <Badge tone={exam.published ? "green" : "amber"}>{exam.published ? "Published" : "Draft"}</Badge>
         {ctx.role === "ADMIN" && <PublishButton examId={exam.id} published={exam.published} />}
       </PageHeader>

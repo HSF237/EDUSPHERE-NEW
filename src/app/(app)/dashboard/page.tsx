@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
-import { Card, PageHeader, Stat, Table, Badge, Progress, Empty } from "@/components/ui";
+import { Card, DashBanner, Chip, Stat, Table, Badge, Progress, Empty } from "@/components/ui";
+import { SceneCampus, SceneLaptop, SceneParent } from "@/components/art";
 import { fmtDate, pct, todayUTC } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -18,9 +19,9 @@ async function PlatformDash() {
   const list = await db.school.findMany({ orderBy: { createdAt: "desc" }, take: 10, include: { _count: { select: { students: true, teachers: true } } } });
   return (
     <>
-      <PageHeader title="Platform overview" sub="All schools on EduSphere" />
+      <DashBanner title="Platform overview" sub="Every school on EduSphere, at a glance." scene={<SceneCampus />} chips={<><Chip>{schools} schools</Chip><Chip>{users} users</Chip></>} />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Schools" value={schools} /><Stat label="Users" value={users} /><Stat label="Students" value={students} />
+        <Stat label="Schools" value={schools} icon="building" tone="indigo" /><Stat label="Users" value={users} icon="users" /><Stat label="Students" value={students} icon="cap" tone="green" />
       </div>
       <Card title="Recently added schools" flush>
         <Table head={["School", "Code", "Students", "Teachers", "Status"]}>
@@ -62,12 +63,12 @@ async function StaffDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) {
   }));
   return (
     <>
-      <PageHeader title={`Welcome, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} />
+      <DashBanner title={`Welcome back, ${ctx.user.name.split(" ")[0]}`} sub={`${ctx.user.school?.name} · ${fmtDate(today)}`} scene={<SceneLaptop />} chips={<><Chip>{students} students</Chip><Chip>{pendingLeave} leave pending</Chip><Chip>{hw} homework due</Chip></>} />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Students" value={students} hint={`${classes.length} classes`} />
-        <Stat label="30-day attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 80 ? "amber" : "red"} hint={`${total} records`} />
-        <Stat label={admin ? "Attendance to approve" : "Classes marked today"} value={admin ? pendingApprovals : `${sessionsToday}/${classes.length}`} tone="indigo" />
-        <Stat label="Pending leave requests" value={pendingLeave} tone={pendingLeave ? "amber" : "slate"} hint={`${hw} homework due soon`} />
+        <Stat label="Students" value={students} hint={`${classes.length} classes`} icon="cap" />
+        <Stat label="30-day attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 80 ? "amber" : "red"} hint={`${total} records`} icon="attendance" />
+        <Stat label={admin ? "Attendance to approve" : "Classes marked today"} value={admin ? pendingApprovals : `${sessionsToday}/${classes.length}`} tone="indigo" icon="check" />
+        <Stat label="Pending leave requests" value={pendingLeave} tone={pendingLeave ? "amber" : "slate"} hint={`${hw} homework due soon`} icon="send" />
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Classes — today" className="lg:col-span-2" flush>
@@ -110,15 +111,15 @@ async function ParentDash({ ctx }: { ctx: Awaited<ReturnType<typeof getCtx>> }) 
   const ann = await db.announcement.findMany({ where: { schoolId: ctx.schoolId, audience: { in: ["ALL", "PARENTS"] } }, orderBy: { createdAt: "desc" }, take: 3 });
   return (
     <>
-      <PageHeader title={`Welcome, ${ctx.user.name}`} sub={ctx.user.school?.name} />
+      <DashBanner title={`Welcome, ${ctx.user.name.split(" ")[0]}`} sub={ctx.user.school?.name} scene={<SceneParent />} chips={<Chip>{cards.length} {cards.length === 1 ? "child" : "children"}</Chip>} />
       {cards.length === 0 && <Card><Empty title="No children linked to your account" hint="Contact the school office to link your child." /></Card>}
       <div className="space-y-6">
         {cards.map(({ k, rate, hw, avg }) => (
           <Card key={k.id} title={`${k.name} · Class ${k.class.name}`}>
             <div className="mb-4 grid gap-4 sm:grid-cols-3">
-              <Stat label="Attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 75 ? "amber" : "red"} />
-              <Stat label="Average marks" value={avg ?? "—"} tone="indigo" />
-              <Stat label="Homework pending" value={hw.filter((h) => !h.submissions[0]?.done).length} />
+              <Stat label="Attendance" value={`${rate}%`} tone={rate >= 90 ? "green" : rate >= 75 ? "amber" : "red"} icon="attendance" />
+              <Stat label="Average marks" value={avg ?? "—"} tone="indigo" icon="award" />
+              <Stat label="Homework pending" value={hw.filter((h) => !h.submissions[0]?.done).length} icon="notebook" />
             </div>
             <h3 className="mb-2 text-sm font-semibold">Upcoming homework</h3>
             {hw.length === 0 ? <p className="text-sm text-slate-500">No pending homework.</p> : (

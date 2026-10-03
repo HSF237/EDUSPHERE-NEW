@@ -16,7 +16,7 @@ export default async function HomeworkDetail({ params }: { params: Promise<{ id:
   const done = students.filter((s) => s.submissions[0]?.done).length;
   return (
     <>
-      <PageHeader title={hw.title} sub={`${hw.class.name} · ${hw.subject.name} · Due ${fmtDate(hw.dueOn)}`}>
+      <PageHeader art="homework" title={hw.title} sub={`${hw.class.name} · ${hw.subject.name} · Due ${fmtDate(hw.dueOn)}`}>
         <Badge tone={hw.status === "ACTIVE" ? "green" : "slate"}>{hw.status.toLowerCase()}</Badge>
         {hw.status === "ACTIVE" && <form action={closeHomework.bind(null, hw.id)}><button className="btn-ghost">Close homework</button></form>}
       </PageHeader>
