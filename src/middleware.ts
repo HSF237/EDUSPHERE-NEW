@@ -30,4 +30,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.rewrite(url);
 }
 
-export const config = { matcher: ["/((?!_next/|api/|favicon|icon|apple-icon|logo).*)"] };
+export const config = { matcher: ["/((?!_next/|api/|favicon|icon|apple-icon|logo|manifest|sw\\.js).*)"] };
