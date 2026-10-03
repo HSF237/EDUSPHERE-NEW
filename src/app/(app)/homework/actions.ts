@@ -13,7 +13,7 @@ const schema = z.object({
 
 export async function createHomework(_: { error?: string } | undefined, fd: FormData) {
   const ctx = await getCtx();
-  if (ctx.role !== "TEACHER" && ctx.role !== "ADMIN") return { error: "Not allowed" };
+  if (ctx.role !== "TEACHER") return { error: "Homework is assigned by teachers." };
   const p = schema.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: "Please fill every field (title 3+ characters)." };
   const d = p.data;
@@ -30,7 +30,7 @@ export async function createHomework(_: { error?: string } | undefined, fd: Form
 
 export async function toggleSubmission(homeworkId: string, studentId: string, done: boolean) {
   const ctx = await getCtx();
-  if (ctx.role !== "TEACHER" && ctx.role !== "ADMIN") return;
+  if (ctx.role !== "TEACHER") return;
   const hw = await db.homework.findFirst({ where: { id: homeworkId, schoolId: ctx.schoolId, classId: { in: ctx.classIds } } });
   if (!hw) return;
   await db.homeworkSubmission.upsert({ where: { homeworkId_studentId: { homeworkId, studentId } }, create: { homeworkId, studentId, done }, update: { done } });
@@ -39,7 +39,7 @@ export async function toggleSubmission(homeworkId: string, studentId: string, do
 
 export async function closeHomework(id: string) {
   const ctx = await getCtx();
-  if (ctx.role === "PARENT") return;
+  if (ctx.role !== "TEACHER") return;
   await db.homework.updateMany({ where: { id, schoolId: ctx.schoolId, classId: { in: ctx.classIds } }, data: { status: "CLOSED" } });
   revalidatePath("/homework");
 }
