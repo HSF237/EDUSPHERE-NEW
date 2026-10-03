@@ -10,17 +10,20 @@ import { BottomNav } from "@/components/shell/bottom-nav";
 import { Icon } from "@/components/icons";
 import { keyedHref } from "@/lib/pagekey";
 import { ForcePassword } from "./force-password";
+import { LangSwitch } from "@/components/lang-switch";
+import { getLang, tr } from "@/lib/i18n";
+import { brandVars } from "@/lib/branding";
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
 
-function Brand({ school }: { school: string }) {
+function Brand({ school, logo }: { school: string; logo?: string | null }) {
   return (
     <Link href="/dashboard" className="flex items-center gap-3 px-2">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white p-1.5 shadow-lg"><img src="/logo-icon.png" alt="" className="h-full w-full object-contain" /></span>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white p-1.5 shadow-lg"><img src={logo ?? "/logo-icon.png"} alt="" className="h-full w-full object-contain" /></span>
       <span className="min-w-0">
-        <span className="block text-lg font-extrabold leading-tight tracking-tight text-white">EduSphere</span>
-        <span className="block truncate text-xs text-brand-300">{school}</span>
+        <span className="block text-lg font-extrabold leading-tight tracking-tight text-white">{logo ? school : "EduSphere"}</span>
+        <span className="block truncate text-xs text-brand-300">{logo ? "EduSphere" : school}</span>
       </span>
     </Link>
   );
@@ -29,10 +32,14 @@ function Brand({ school }: { school: string }) {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getCtx();
   const user = ctx.user;
+  const lang = await getLang();
+  const sch = user.schoolId ? await db.school.findUnique({ where: { id: user.schoolId }, select: { brandColor: true, logoFileId: true } }) : null;
+  const vars = brandVars(sch?.brandColor);
+  const logo = sch?.logoFileId ? `/api/files/${sch.logoFileId}` : null;
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
   if (user.mustChangePassword) return <ForcePassword name={user.name} />;
   const secret = process.env.AUTH_SECRET ?? "";
-  const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined })));
+  const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: tr(lang, n.label), icon: n.icon, group: n.group ? tr(lang, n.group) : n.group, badge: n.href === "/notifications" ? unread : undefined })));
   const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ctx.mode === "SUBJECT" ? ["/dashboard", "/exams", "/portions", "/homework"] : ["/dashboard", "/attendance", "/homework", "/messages"])
     .map((h) => items.find((i) => i.base === h)).filter((i): i is (typeof items)[number] => !!i);
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -55,9 +62,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
   return (
     <div className="min-h-screen lg:flex">
+      {vars && <style dangerouslySetInnerHTML={{ __html: `:root{${vars}}` }} />}
       <aside className="relative hidden w-72 shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-brand-950 via-brand-900 to-brand-950 p-4 text-white lg:sticky lg:top-0 lg:flex lg:h-screen">
         <div className="pointer-events-none absolute -left-20 top-40 h-56 w-56 rounded-full bg-brand-600/20 blur-3xl" />
-        <div className="relative mb-7 mt-1"><Brand school={school} /></div>
+        <div className="relative mb-7 mt-1"><Brand school={school} logo={logo} /></div>
         <div className="relative flex-1"><NavLinks items={items} /></div>
         <div className="relative">{userCard}</div>
       </aside>
@@ -65,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200/70 bg-[#f5f6fc]/85 px-4 py-3 backdrop-blur sm:px-8">
           <div className="flex items-center gap-2 lg:hidden">
             <MobileMenu>
-              <div className="mb-6"><Brand school={school} /></div>
+              <div className="mb-6"><Brand school={school} logo={logo} /></div>
               <NavLinks items={items} />
               {userCard}
             </MobileMenu>
@@ -73,6 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <div className="hidden text-sm text-slate-500 lg:block">{switcher ?? school}</div>
           <div className="flex items-center gap-3">
+            <LangSwitch current={lang} />
             {switcher && <div className="lg:hidden">{switcher}</div>}
             <Link href="/notifications" className="relative rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-700" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}>
               <Icon name="bell" className="h-5 w-5" />

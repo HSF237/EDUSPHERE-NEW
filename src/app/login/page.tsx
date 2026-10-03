@@ -3,6 +3,7 @@ import { useActionState } from "react";
 import { loginAction } from "@/lib/actions-auth";
 import { SceneClassroom } from "@/components/art";
 import Link from "next/link";
+import { LangSwitch } from "@/components/lang-switch";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -28,6 +29,7 @@ export default function LoginPage() {
       </section>
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
+          <div className="mb-4 flex justify-end"><LangSwitch /></div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="EduSphere" className="mx-auto mb-5 h-10 w-auto lg:hidden" />
         <form action={action} className="card w-full space-y-4 p-7">
