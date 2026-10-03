@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getCtx } from "@/lib/scope";
+import { redirect } from "next/navigation";
+import { can, getCtx } from "@/lib/scope";
 import { Badge, Card, Empty, PageHeader, Stat, Table } from "@/components/ui";
 import { Columns, Donut, HBars, Heatmap, LineChart, tint } from "@/components/charts";
 import { fmtDate, todayUTC } from "@/lib/utils";
@@ -16,7 +17,7 @@ const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 export default async function Reports({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const ctx = await getCtx();
-  if (ctx.role !== "ADMIN") return null;
+  if (!can(ctx, "REPORTS")) redirect("/dashboard");
   const days = (await searchParams).days === "30" ? 30 : 60;
   const sid = ctx.schoolId;
   const today = todayUTC();
