@@ -1,51 +1,63 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
-import { Card, PageHeader, Empty } from "@/components/ui";
-import { fmtDate } from "@/lib/utils";
-import { allowedRecipients, sendMessage } from "./actions";
-import { NewMessage } from "./new";
+import { allowedRecipients } from "./actions";
+import { ChatList, ChatPane, type ChatItem, type Contact } from "./chat-ui";
 
 export const metadata = { title: "Messages" };
 
-export default async function Messages({ searchParams }: { searchParams: Promise<{ c?: string; new?: string }> }) {
+export default async function Messages({ searchParams }: { searchParams: Promise<{ c?: string; u?: string }> }) {
   const ctx = await getCtx();
   const sp = await searchParams;
-  const convs = await db.conversation.findMany({
-    where: { schoolId: ctx.schoolId, members: { some: { userId: ctx.user.id } } },
-    include: { members: { include: { user: { select: { name: true, id: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } },
-    orderBy: { updatedAt: "desc" }, take: 50,
+  const me = ctx.user.id;
+  const [convs, people] = await Promise.all([
+    db.conversation.findMany({
+      where: { schoolId: ctx.schoolId, members: { some: { userId: me } } },
+      include: { members: { include: { user: { select: { id: true, name: true, role: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+      orderBy: { updatedAt: "desc" }, take: 100,
+    }),
+    ctx.role === "SUPER_ADMIN" ? Promise.resolve([]) : allowedRecipients(ctx),
+  ]);
+  const peerOf = (c: (typeof convs)[number]) => c.members.find((m) => m.userId !== me)?.user ?? { id: me, name: "You", role: ctx.role };
+  const unread = await Promise.all(convs.map((c) => {
+    const m = c.members.find((x) => x.userId === me)!;
+    return db.message.count({ where: { conversationId: c.id, senderId: { not: me }, createdAt: { gt: m.lastReadAt } } });
+  }));
+  const active = convs.find((c) => c.id === sp.c);
+  const convWithUser = sp.u ? convs.find((c) => c.members.some((m) => m.userId === sp.u)) : undefined;
+  const target = !active && sp.u ? (convWithUser ? undefined : people.find((p) => p.id === sp.u)) : undefined;
+  let pane: React.ReactNode = null;
+  const shown = active ?? convWithUser;
+  if (shown) {
+    const [msgs] = await Promise.all([db.message.findMany({ where: { conversationId: shown.id }, orderBy: { createdAt: "asc" }, take: 300 })]);
+    await db.conversationMember.updateMany({ where: { conversationId: shown.id, userId: me }, data: { lastReadAt: new Date() } });
+    const peer = peerOf(shown);
+    const peerRead = shown.members.find((m) => m.userId !== me)?.lastReadAt;
+    pane = <ChatPane key={shown.id} peer={peer} convId={shown.id} subject={shown.subject} messages={msgs.map((m) => ({ id: m.id, mine: m.senderId === me, body: m.body, at: m.createdAt.toISOString() }))} peerReadAt={peerRead ? peerRead.toISOString() : null} />;
+  } else if (target) {
+    pane = <ChatPane key={target.id} peer={target} messages={[]} peerReadAt={null} />;
+  }
+  const chats: ChatItem[] = convs.map((c, i) => {
+    const l = c.messages[0]; const p = peerOf(c);
+    return { id: c.id, name: p.name, role: p.role, preview: l?.body ?? c.subject, at: (l?.createdAt ?? c.updatedAt).toISOString(), mine: l?.senderId === me, unread: shown?.id === c.id ? 0 : unread[i], subject: c.subject };
   });
-  const active = !sp.new ? convs.find((c) => c.id === sp.c) : undefined;
-  const thread = active ? await db.message.findMany({ where: { conversationId: active.id }, orderBy: { createdAt: "asc" }, take: 200, include: { sender: { select: { name: true } } } }) : [];
-  if (active) await db.conversationMember.updateMany({ where: { conversationId: active.id, userId: ctx.user.id }, data: { lastReadAt: new Date() } });
-  const people = sp.new ? await allowedRecipients(ctx) : [];
-  const other = (c: (typeof convs)[number]) => c.members.filter((m) => m.userId !== ctx.user.id).map((m) => m.user.name).join(", ");
+  const convByUser = new Map(convs.flatMap((c) => c.members.filter((m) => m.userId !== me).map((m) => [m.userId, c.id] as const)));
+  const contacts: Contact[] = people.map((p) => ({ id: p.id, name: p.name, role: p.role, convId: convByUser.get(p.id) }));
+  const open = !!pane;
   return (
-    <>
-      <PageHeader title="Messages" sub="Private conversations between parents, teachers and the school."><Link className="btn" href="/messages?new=1">New message</Link></PageHeader>
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Conversations" flush className="lg:col-span-1">
-          {convs.length === 0 ? <Empty title="No conversations" /> : (
-            <ul className="divide-y divide-slate-100">{convs.map((c) => {
-              const m = c.members.find((x) => x.userId === ctx.user.id)!; const last = c.messages[0]; const unread = last && last.senderId !== ctx.user.id && last.createdAt > m.lastReadAt;
-              return (<li key={c.id}><Link href={`/messages?c=${c.id}`} className={`block px-5 py-3 hover:bg-slate-50 ${active?.id === c.id ? "bg-brand-50" : ""}`}>
-                <div className="flex justify-between text-sm"><span className={unread ? "font-bold" : "font-medium"}>{other(c)}</span><span className="text-xs text-slate-400">{fmtDate(c.updatedAt)}</span></div>
-                <div className="truncate text-xs text-slate-500">{c.subject}</div></Link></li>);
-            })}</ul>
+    <div className="-mx-4 -mt-4 sm:mx-0 sm:mt-0">
+      <div className="flex h-[calc(100dvh-4.25rem-4.5rem)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-card lg:h-[calc(100dvh-9rem)]">
+        <aside className={`${open ? "hidden lg:block" : "block"} w-full shrink-0 border-slate-100 lg:w-[22rem] lg:border-r xl:w-[24rem]`}>
+          <ChatList chats={chats} contacts={contacts} activeId={shown?.id} activeUser={target?.id} canCompose={contacts.length > 0} />
+        </aside>
+        <section className={`${open ? "fixed inset-0 z-[45] bg-white lg:static lg:z-auto" : "hidden lg:flex"} min-w-0 flex-1 lg:block`}>
+          {pane ?? (
+            <div className="grid h-full place-items-center bg-[#eceefa] p-8 text-center">
+              <div><div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full bg-white text-brand-600 shadow-sm"><svg className="h-9 w-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg></div>
+                <h2 className="text-lg font-bold text-slate-800">EduSphere Messages</h2><p className="mt-1 max-w-xs text-sm text-slate-500">Pick a chat on the left, or open Contacts to start a new conversation.</p></div>
+            </div>
           )}
-        </Card>
-        <div className="lg:col-span-2">
-          {sp.new ? <Card title="New message"><NewMessage people={people} /></Card> : active ? (
-            <Card title={`${active.subject} — ${other(active)}`} flush>
-              <div className="max-h-[28rem] space-y-3 overflow-y-auto p-5">{thread.map((m) => { const me = m.senderId === ctx.user.id; return (
-                <div key={m.id} className={`flex ${me ? "justify-end" : ""}`}><div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${me ? "bg-brand-600 text-white" : "bg-slate-100"}`}>
-                  {!me && <div className="mb-0.5 text-xs font-semibold">{m.sender.name}</div>}<p className="whitespace-pre-wrap">{m.body}</p><div className={`mt-1 text-[10px] ${me ? "text-indigo-200" : "text-slate-400"}`}>{m.createdAt.toLocaleString("en-GB")}</div></div></div>);})}</div>
-              <form action={sendMessage.bind(null, active.id)} className="flex gap-2 border-t border-slate-100 p-3"><input name="body" className="input" placeholder="Write a reply…" required maxLength={4000} aria-label="Reply" /><button className="btn">Send</button></form>
-            </Card>
-          ) : <Card><Empty title="Select a conversation" hint="Or start a new message." /></Card>}
-        </div>
+        </section>
       </div>
-    </>
+    </div>
   );
 }
