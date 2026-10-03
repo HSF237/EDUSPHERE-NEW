@@ -12,8 +12,16 @@ const NAV = [
 
 export function Logo({ light = false }: { light?: boolean }) {
   return (
-    <Link href="/" className={`flex items-center gap-2.5 text-lg font-extrabold ${light ? "text-white" : "text-brand-950"}`}>
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white"><Icon name="cap" className="h-5 w-5" /></span>{SITE.name}
+    <Link href="/" aria-label={`${SITE.name} home`} className="flex items-center">
+      {light ? (
+        <span className="flex items-center gap-2.5 text-lg font-extrabold text-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.png" alt="" className="h-9 w-auto" />{SITE.name}
+        </span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/logo.png" alt={SITE.name} className="h-9 w-auto sm:h-10" />
+      )}
     </Link>
   );
 }

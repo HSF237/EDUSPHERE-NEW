@@ -3,16 +3,14 @@ import { useActionState } from "react";
 import { loginAction } from "@/lib/actions-auth";
 import { SceneClassroom } from "@/components/art";
 import Link from "next/link";
-import { Icon } from "@/components/icons";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined);
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <section className="blob-bg relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-50 via-white to-sun-50 p-12 lg:flex">
-        <div className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-brand-950">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white"><Icon name="cap" className="h-5 w-5" /></span>EduSphere
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="EduSphere" className="h-12 w-auto self-start" />
         <div>
           <SceneClassroom className="animate-float mx-auto w-full max-w-lg" />
           <h1 className="mt-8 text-4xl font-extrabold leading-tight tracking-tight text-brand-950">One platform for every school, teacher and parent.</h1>
@@ -21,7 +19,10 @@ export default function LoginPage() {
         <p className="text-sm text-slate-400">© EduSphere · <Link className="hover:underline" href="/terms">Terms</Link> · <Link className="hover:underline" href="/privacy">Privacy</Link></p>
       </section>
       <section className="flex items-center justify-center p-6">
-        <form action={action} className="card w-full max-w-sm space-y-4 p-7">
+        <div className="w-full max-w-sm">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="EduSphere" className="mx-auto mb-5 h-10 w-auto lg:hidden" />
+        <form action={action} className="card w-full space-y-4 p-7">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight text-brand-950">Welcome back</h2>
             <p className="mt-1 text-sm text-slate-500">Sign in with the account your school gave you.</p>
@@ -38,6 +39,7 @@ export default function LoginPage() {
           <button className="btn w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
           <p className="text-center text-xs text-slate-500">By signing in you agree to our <Link className="font-semibold text-brand-700 underline" href="/terms">Terms</Link> and <Link className="font-semibold text-brand-700 underline" href="/privacy">Privacy Policy</Link>. <Link className="underline" href="/">Back to home</Link></p>
         </form>
+        </div>
       </section>
     </main>
   );

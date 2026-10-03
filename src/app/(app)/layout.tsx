@@ -14,7 +14,8 @@ const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", 
 function Brand({ school }: { school: string }) {
   return (
     <Link href="/dashboard" className="flex items-center gap-3 px-2">
-      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-sun-400 to-coral-500 text-white shadow-lg shadow-coral-500/30"><Icon name="cap" className="h-5 w-5" /></span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white p-1.5 shadow-lg"><img src="/logo-icon.png" alt="" className="h-full w-full object-contain" /></span>
       <span className="min-w-0">
         <span className="block text-lg font-extrabold leading-tight tracking-tight text-white">EduSphere</span>
         <span className="block truncate text-xs text-brand-300">{school}</span>
