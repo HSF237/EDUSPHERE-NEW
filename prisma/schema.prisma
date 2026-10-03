@@ -77,18 +77,18 @@ model School {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   schoolId     String?
-  email        String   @unique
+  email        String    @unique
   passwordHash String
   name         String
   role         Role
   phone        String?
-  active       Boolean  @default(true)
+  active       Boolean   @default(true)
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
-  school   School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School?              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher  Teacher?
   children Guardian[]
   sent     Message[]
@@ -99,12 +99,12 @@ model User {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
-  schoolId  String
-  name      String
-  startsOn  DateTime
-  endsOn    DateTime
-  current   Boolean  @default(false)
+  id       String   @id @default(cuid())
+  schoolId String
+  name     String
+  startsOn DateTime
+  endsOn   DateTime
+  current  Boolean  @default(false)
 
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes Class[]
@@ -114,25 +114,26 @@ model AcademicYear {
 }
 
 model Class {
-  id         String  @id @default(cuid())
-  schoolId   String
-  yearId     String
-  grade      Int
-  section    String
-  name       String
-  roomNo     String?
+  id             String  @id @default(cuid())
+  schoolId       String
+  yearId         String
+  grade          Int
+  section        String
+  name           String
+  roomNo         String?
   classTeacherId String?
 
-  school   School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  year     AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
-  classTeacher Teacher? @relation("ClassTeacher", fields: [classTeacherId], references: [id], onDelete: SetNull)
-  students Student[]
-  subjects ClassSubject[]
-  attendance AttendanceSession[]
-  homework Homework[]
-  diary    DiaryEntry[]
-  slots    TimetableSlot[]
-  exams    Exam[]
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  year         AcademicYear        @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  classTeacher Teacher?            @relation("ClassTeacher", fields: [classTeacherId], references: [id], onDelete: SetNull)
+  students     Student[]
+  subjects     ClassSubject[]
+  attendance   AttendanceSession[]
+  homework     Homework[]
+  diary        DiaryEntry[]
+  slots        TimetableSlot[]
+  exams        Exam[]
+  portions     Portion[]
 
   @@unique([schoolId, yearId, name])
   @@index([schoolId])
@@ -144,31 +145,35 @@ model Subject {
   name     String
   code     String
 
-  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classes ClassSubject[]
+  school   School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes  ClassSubject[]
   homework Homework[]
-  slots   TimetableSlot[]
+  slots    TimetableSlot[]
   schedule ExamSchedule[]
+  portions Portion[]
 
   @@unique([schoolId, code])
 }
 
 model Teacher {
-  id          String  @id @default(cuid())
-  schoolId    String
-  userId      String  @unique
-  employeeNo  String
+  id            String    @id @default(cuid())
+  schoolId      String
+  userId        String    @unique
+  employeeNo    String
   qualification String?
-  joinedOn    DateTime?
+  joinedOn      DateTime?
+  position      String?
+  permissions   String[]  @default([])
 
-  school  School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  homeroom Class[] @relation("ClassTeacher")
+  school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portions    Portion[]
+  homeroom    Class[]         @relation("ClassTeacher")
   assignments ClassSubject[]
-  slots   TimetableSlot[]
-  subs    Substitute[] @relation("SubTeacher")
-  absent  Substitute[] @relation("AbsentTeacher")
-  ptmSlots PtmSlot[]
+  slots       TimetableSlot[]
+  subs        Substitute[]    @relation("SubTeacher")
+  absent      Substitute[]    @relation("AbsentTeacher")
+  ptmSlots    PtmSlot[]
 
   @@unique([schoolId, employeeNo])
 }
@@ -188,26 +193,26 @@ model ClassSubject {
 }
 
 model Student {
-  id        String  @id @default(cuid())
-  schoolId  String
-  classId   String
+  id          String    @id @default(cuid())
+  schoolId    String
+  classId     String
   admissionNo String
-  rollNo    Int
-  name      String
-  gender    String
-  dob       DateTime?
-  bloodGroup String?
-  address   String?
-  active    Boolean @default(true)
+  rollNo      Int
+  name        String
+  gender      String
+  dob         DateTime?
+  bloodGroup  String?
+  address     String?
+  active      Boolean   @default(true)
 
-  school  School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class   Class  @relation(fields: [classId], references: [id])
-  guardians Guardian[]
-  attendance AttendanceRecord[]
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class       Class                @relation(fields: [classId], references: [id])
+  guardians   Guardian[]
+  attendance  AttendanceRecord[]
   submissions HomeworkSubmission[]
-  marks   Mark[]
-  leaves  LeaveRequest[]
-  ptmSlots PtmSlot[]
+  marks       Mark[]
+  leaves      LeaveRequest[]
+  ptmSlots    PtmSlot[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId, classId])
@@ -226,18 +231,18 @@ model Guardian {
 }
 
 model AttendanceSession {
-  id         String   @id @default(cuid())
-  schoolId   String
-  classId    String
-  date       DateTime @db.Date
-  markedById String
-  status     ApprovalStatus @default(PENDING)
+  id           String         @id @default(cuid())
+  schoolId     String
+  classId      String
+  date         DateTime       @db.Date
+  markedById   String
+  status       ApprovalStatus @default(PENDING)
   reviewedById String?
-  reviewNote String?
-  createdAt  DateTime @default(now())
+  reviewNote   String?
+  createdAt    DateTime       @default(now())
 
-  school  School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school  School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
   records AttendanceRecord[]
 
   @@unique([classId, date])
@@ -270,9 +275,9 @@ model Homework {
   dueOn       DateTime @db.Date
   status      HwStatus @default(ACTIVE)
 
-  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id])
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class       Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject              @relation(fields: [subjectId], references: [id])
   submissions HomeworkSubmission[]
 
   @@index([schoolId, classId, dueOn])
@@ -320,10 +325,10 @@ model TimetableSlot {
   startTime String
   endTime   String
 
-  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id])
-  teacher Teacher @relation(fields: [teacherId], references: [id])
+  school  School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class   Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject      @relation(fields: [subjectId], references: [id])
+  teacher Teacher      @relation(fields: [teacherId], references: [id])
   subs    Substitute[]
 
   @@unique([classId, day, period])
@@ -331,37 +336,37 @@ model TimetableSlot {
 }
 
 model Substitute {
-  id        String   @id @default(cuid())
-  schoolId  String
-  slotId    String
-  date      DateTime @db.Date
+  id              String   @id @default(cuid())
+  schoolId        String
+  slotId          String
+  date            DateTime @db.Date
   absentTeacherId String
   subTeacherId    String
-  reason    String?
+  reason          String?
 
-  school  School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  slot    TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  absent  Teacher       @relation("AbsentTeacher", fields: [absentTeacherId], references: [id])
-  sub     Teacher       @relation("SubTeacher", fields: [subTeacherId], references: [id])
+  school School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  slot   TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  absent Teacher       @relation("AbsentTeacher", fields: [absentTeacherId], references: [id])
+  sub    Teacher       @relation("SubTeacher", fields: [subTeacherId], references: [id])
 
   @@unique([slotId, date])
   @@index([schoolId, date])
 }
 
 model Exam {
-  id       String  @id @default(cuid())
-  schoolId String
-  yearId   String
-  classId  String
-  name     String
-  maxMarks Int     @default(100)
-  passMarks Int    @default(35)
-  startsOn DateTime @db.Date
-  published Boolean @default(false)
+  id        String   @id @default(cuid())
+  schoolId  String
+  yearId    String
+  classId   String
+  name      String
+  maxMarks  Int      @default(100)
+  passMarks Int      @default(35)
+  startsOn  DateTime @db.Date
+  published Boolean  @default(false)
 
-  school   School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  year     AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
-  class    Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school   School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  year     AcademicYear   @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  class    Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
   schedule ExamSchedule[]
   marks    Mark[]
 
@@ -382,7 +387,7 @@ model ExamSchedule {
 }
 
 model Mark {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   examId    String
   subjectId String
   studentId String
@@ -397,17 +402,17 @@ model Mark {
 }
 
 model LeaveRequest {
-  id         String      @id @default(cuid())
-  schoolId   String
-  studentId  String
+  id            String      @id @default(cuid())
+  schoolId      String
+  studentId     String
   requestedById String
-  fromDate   DateTime    @db.Date
-  toDate     DateTime    @db.Date
-  reason     String
-  status     LeaveStatus @default(PENDING)
-  decidedById String?
-  decisionNote String?
-  createdAt  DateTime    @default(now())
+  fromDate      DateTime    @db.Date
+  toDate        DateTime    @db.Date
+  reason        String
+  status        LeaveStatus @default(PENDING)
+  decidedById   String?
+  decisionNote  String?
+  createdAt     DateTime    @default(now())
 
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -438,7 +443,7 @@ model Conversation {
   subject   String
   updatedAt DateTime @default(now())
 
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   members  ConversationMember[]
   messages Message[]
 
@@ -446,10 +451,10 @@ model Conversation {
 }
 
 model ConversationMember {
-  id     String @id @default(cuid())
+  id             String   @id @default(cuid())
   conversationId String
-  userId String
-  lastReadAt DateTime @default(now())
+  userId         String
+  lastReadAt     DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -459,11 +464,11 @@ model ConversationMember {
 }
 
 model Message {
-  id        String   @id @default(cuid())
+  id             String   @id @default(cuid())
   conversationId String
-  senderId  String
-  body      String
-  createdAt DateTime @default(now())
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation(fields: [senderId], references: [id])
@@ -472,13 +477,13 @@ model Message {
 }
 
 model Notification {
-  id       String   @id @default(cuid())
-  schoolId String
-  userId   String
-  title    String
-  body     String?
-  link     String?
-  read     Boolean  @default(false)
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String
+  title     String
+  body      String?
+  link      String?
+  read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -488,12 +493,12 @@ model Notification {
 }
 
 model PtmEvent {
-  id       String   @id @default(cuid())
-  schoolId String
-  title    String
-  date     DateTime @db.Date
-  venue    String?
-  slotMinutes Int   @default(10)
+  id          String   @id @default(cuid())
+  schoolId    String
+  title       String
+  date        DateTime @db.Date
+  venue       String?
+  slotMinutes Int      @default(10)
 
   school School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   slots  PtmSlot[]
@@ -502,7 +507,7 @@ model PtmEvent {
 }
 
 model PtmSlot {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   eventId   String
   teacherId String
   startTime String
@@ -527,4 +532,23 @@ model AuditLog {
   school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, createdAt])
+}
+
+model Portion {
+  id        String   @id @default(cuid())
+  schoolId  String
+  classId   String
+  subjectId String
+  teacherId String
+  date      DateTime @db.Date
+  topic     String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([classId, date])
+  @@index([schoolId])
 }

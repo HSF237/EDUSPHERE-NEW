@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/session";
+import { getCtx } from "@/lib/scope";
+import { WorkspaceSwitcher } from "./workspace";
 import { db } from "@/lib/db";
-import { NAV } from "@/components/nav";
+import { navFor } from "@/components/nav";
 import { logoutAction } from "@/lib/actions-auth";
 import { NavLinks } from "@/components/shell/nav-links";
 import { MobileMenu } from "@/components/shell/mobile-menu";
@@ -23,20 +24,23 @@ function Brand({ school }: { school: string }) {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const ctx = await getCtx();
+  const user = ctx.user;
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
-  const items = NAV.filter((n) => n.roles.includes(user.role)).map((n) => ({ href: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined }));
-  const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ["/dashboard", "/attendance", "/homework", "/messages"])
+  const items = navFor(user.role, ctx.mode, ctx.perms).map((n) => ({ href: n.href, label: n.label, icon: n.icon, group: n.group, badge: n.href === "/notifications" ? unread : undefined }));
+  const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ctx.mode === "SUBJECT" ? ["/dashboard", "/exams", "/portions", "/homework"] : ["/dashboard", "/attendance", "/homework", "/messages"])
     .map((h) => items.find((i) => i.href === h)).filter((i): i is (typeof items)[number] => !!i);
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   const school = user.school?.name ?? "All schools";
+  const roleLabel = user.role === "TEACHER" ? (ctx.position ? `${ctx.position} · ${ctx.mode === "SUBJECT" ? "Subject teacher" : "Teacher"}` : ctx.mode === "SUBJECT" ? "Subject teacher" : ctx.mode === "CLASS" ? "Class teacher" : "Teacher") : ROLE_LABEL[user.role];
+  const switcher = user.role === "TEACHER" && ctx.workspaces.length > 0 ? <WorkspaceSwitcher items={ctx.workspaces} active={ctx.active!.id} /> : null;
   const userCard = (
     <div className="mt-6 rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sun-400 to-coral-500 text-sm font-bold text-white">{initials}</span>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-white">{user.name}</div>
-          <div className="truncate text-xs text-brand-300">{ROLE_LABEL[user.role]}</div>
+          <div className="truncate text-xs text-brand-300">{roleLabel}</div>
         </div>
       </div>
       <form action={logoutAction} className="mt-3">
@@ -60,17 +64,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <NavLinks items={items} />
               {userCard}
             </MobileMenu>
-            <span className="text-base font-extrabold text-brand-900">EduSphere</span>
+            <span className={`text-base font-extrabold text-brand-900 ${switcher ? "hidden min-[420px]:inline" : ""}`}>EduSphere</span>
           </div>
-          <div className="hidden text-sm text-slate-500 lg:block">{school}</div>
+          <div className="hidden text-sm text-slate-500 lg:block">{switcher ?? school}</div>
           <div className="flex items-center gap-3">
+            {switcher && <div className="lg:hidden">{switcher}</div>}
             <Link href="/notifications" className="relative rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-700" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}>
               <Icon name="bell" className="h-5 w-5" />
               {unread > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-coral-500 px-1 text-[10px] font-bold text-white">{unread}</span>}
             </Link>
             <div className="hidden items-center gap-3 rounded-2xl bg-white py-1.5 pl-1.5 pr-4 shadow-sm ring-1 ring-slate-200 sm:flex">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">{initials}</span>
-              <span className="text-sm font-semibold leading-tight">{user.name}<span className="block text-xs font-normal text-slate-500">{ROLE_LABEL[user.role]}</span></span>
+              <span className="text-sm font-semibold leading-tight">{user.name}<span className="block text-xs font-normal text-slate-500">{roleLabel}</span></span>
             </div>
           </div>
         </header>
