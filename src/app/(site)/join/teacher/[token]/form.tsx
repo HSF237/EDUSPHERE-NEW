@@ -3,6 +3,17 @@ import { useActionState, useState } from "react";
 import { joinAsTeacher } from "../../actions";
 import { FormError } from "@/components/site/join-shell";
 
+function SelectAll({ name, label }: { name: string; label: string }) {
+  const [all, setAll] = useState(false);
+  return (
+    <button type="button" className="text-xs font-semibold text-brand-600 hover:underline" onClick={(e) => {
+      const next = !all;
+      e.currentTarget.closest("form")!.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`).forEach((b) => { b.checked = next; });
+      setAll(next);
+    }}>{all ? "Clear all" : label}</button>
+  );
+}
+
 type Cls = { id: string; name: string; taken: string | null };
 type Sub = { id: string; name: string };
 
@@ -45,11 +56,11 @@ export function TeacherJoinForm({ token, school, classes, subjects }: { token: s
         {wantsSubject && (
           <>
             <div>
-              <p className="label">Subjects I teach</p>
+              <div className="mb-1 flex items-center justify-between"><p className="label !mb-0">Subjects I teach (tick every one)</p><SelectAll name="subjectIds" label="Select all subjects" /></div>
               {subjects.length === 0 ? <p className="text-sm text-slate-500">No subjects have been set up yet — ask your principal.</p> : <div className="grid gap-2 sm:grid-cols-2">{subjects.map((s) => <label key={s.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"><input type="checkbox" name="subjectIds" value={s.id} className="h-4 w-4 accent-indigo-600" />{s.name}</label>)}</div>}
             </div>
             <div>
-              <p className="label">…in these classes</p>
+              <div className="mb-1 flex items-center justify-between"><p className="label !mb-0">…in these classes</p><SelectAll name="classIds" label="Select all classes" /></div>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{classes.map((c) => <label key={c.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"><input type="checkbox" name="classIds" value={c.id} className="h-4 w-4 accent-indigo-600" />{c.name}</label>)}</div>
               <p className="mt-1 text-xs text-slate-500">If a subject in a class already has a teacher, it is skipped and your principal is told.</p>
             </div>
