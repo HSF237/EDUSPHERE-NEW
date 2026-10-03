@@ -14,6 +14,12 @@ enum Role {
   PARENT
 }
 
+enum InviteKind {
+  TEACHER
+  PARENT
+  RESET
+}
+
 enum AttStatus {
   PRESENT
   ABSENT
@@ -74,6 +80,7 @@ model School {
   ptms          PtmEvent[]
   substitutes   Substitute[]
   audit         AuditLog[]
+  invites       Invite[]
 }
 
 model User {
@@ -87,8 +94,12 @@ model User {
   active       Boolean   @default(true)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+  mustChangePassword Boolean   @default(false)
 
   school   School?              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invites  Invite[]
   teacher  Teacher?
   children Guardian[]
   sent     Message[]
@@ -213,6 +224,7 @@ model Student {
   marks       Mark[]
   leaves      LeaveRequest[]
   ptmSlots    PtmSlot[]
+  invites     Invite[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId, classId])
@@ -551,4 +563,28 @@ model Portion {
 
   @@index([classId, date])
   @@index([schoolId])
+}
+
+/// Single-use (or few-use) secret links: teacher onboarding, parent access to a child, password reset.
+model Invite {
+  id          String     @id @default(cuid())
+  token       String     @unique
+  kind        InviteKind
+  schoolId    String
+  createdById String
+  studentId   String?
+  userId      String?
+  note        String?
+  maxUses     Int        @default(1)
+  uses        Int        @default(0)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime   @default(now())
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, kind])
+  @@index([studentId])
 }

@@ -35,11 +35,13 @@ export function SiteHeader() {
           {NAV.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-brand-700">{n.label}</Link>)}
         </nav>
         <div className="flex items-center gap-2">
+          <Link href="/register-school" className="btn-ghost hidden sm:inline-flex">Create school</Link>
           <Link href="/login" className="btn">Sign in</Link>
           <details className="relative md:hidden">
             <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 [&::-webkit-details-marker]:hidden" aria-label="Menu"><Icon name="menu" /></summary>
             <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-lift">
               {NAV.map((n) => <Link key={n.href} href={n.href} className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">{n.label}</Link>)}
+              <Link href="/register-school" className="block rounded-xl px-4 py-3 text-sm font-bold text-brand-700 hover:bg-slate-50">Create your school</Link>
             </div>
           </details>
         </div>
@@ -61,6 +63,7 @@ export function SiteFooter() {
           <h3 className="text-sm font-bold uppercase tracking-wider text-white">Product</h3>
           <ul className="mt-4 space-y-2.5 text-sm">
             {NAV.map((n) => <li key={n.href}><Link className="text-brand-200 hover:text-white" href={n.href}>{n.label}</Link></li>)}
+            <li><Link className="text-brand-200 hover:text-white" href="/register-school">Create your school</Link></li>
             <li><Link className="text-brand-200 hover:text-white" href="/login">Sign in</Link></li>
           </ul>
         </div>

@@ -21,7 +21,7 @@ export async function createStudent(fd: FormData) {
     const email = d.parentEmail.toLowerCase();
     const existing = await db.user.findUnique({ where: { email } });
     if (!existing || existing.schoolId === ctx.schoolId) {
-      const u = existing ?? (await db.user.create({ data: { schoolId: ctx.schoolId, email, name: d.parentName || "Parent", role: "PARENT", passwordHash: await bcrypt.hash("ChangeMe123!", 12) } }));
+      const u = existing ?? (await db.user.create({ data: { schoolId: ctx.schoolId, email, name: d.parentName || "Parent", role: "PARENT", passwordHash: await bcrypt.hash("ChangeMe123!", 12), mustChangePassword: true } }));
       if (u.role === "PARENT") await db.guardian.create({ data: { userId: u.id, studentId: st.id } });
     }
   }

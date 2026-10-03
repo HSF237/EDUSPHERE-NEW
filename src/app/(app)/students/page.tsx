@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { can, getCtx, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Table, Empty } from "@/components/ui";
 import { createStudent } from "./actions";
+import { LinkMaker, BulkLinks } from "@/components/link-maker";
+import { bulkParentLinks, parentLink } from "./invite-actions";
 
 export const metadata = { title: "Students" };
 const PAGE = 25;
@@ -37,10 +39,14 @@ export default async function Students({ searchParams }: { searchParams: Promise
           <div className="sm:col-span-2 flex items-end justify-end"><button className="btn">Add student</button></div></form>
           <p className="mt-2 text-xs text-slate-500">New parent accounts get the temporary password <code>ChangeMe123!</code> — they should change it at first sign-in.</p></Card>
       )}
+      <Card title="Invite parents with secret links" className="mb-6">
+        <p className="mb-4 text-sm text-slate-600">Every child gets their own unique link. Copy it and send it to that child’s parent or guardian — when they open it they create their login (or sign in) and the child is added to their account. A parent with more than one child just opens each child’s link. Links work for 30 days and up to two guardians per child.</p>
+        {classes.length > 0 && (sp.class && scope.includes(sp.class) ? <BulkLinks action={bulkParentLinks.bind(null, sp.class)} label={`Create links for all students in ${classes.find((c) => c.id === sp.class)?.name ?? "this class"}`} /> : classes.length === 1 ? <BulkLinks action={bulkParentLinks.bind(null, classes[0].id)} label={`Create links for all students in ${classes[0].name}`} /> : <p className="text-xs text-slate-500">Pick a class in the filter above to create links for the whole class at once, or use the “Parent link” button beside any student.</p>)}
+      </Card>
       <Card flush>
         {list.length === 0 ? <Empty title="No students found" /> : (
-          <Table head={["Roll", "Name", "Class", "Admission no.", "Gender"]}>{list.map((s) => (
-            <tr key={s.id}><td className="td">{s.rollNo}</td><td className="td font-medium"><Link className="text-brand-600 hover:underline" href={`/students/${s.id}`}>{s.name}</Link></td><td className="td">{s.class.name}</td><td className="td">{s.admissionNo}</td><td className="td">{s.gender}</td></tr>))}</Table>
+          <Table head={["Roll", "Name", "Class", "Admission no.", "Gender", "Parent access"]}>{list.map((s) => (
+            <tr key={s.id}><td className="td">{s.rollNo}</td><td className="td font-medium"><Link className="text-brand-600 hover:underline" href={`/students/${s.id}`}>{s.name}</Link></td><td className="td">{s.class.name}</td><td className="td">{s.admissionNo}</td><td className="td">{s.gender}</td><td className="td"><LinkMaker compact action={parentLink.bind(null, s.id)} label="Parent link" message={`Open this link to see ${s.name}’s school updates on EduSphere:`} /></td></tr>))}</Table>
         )}
         <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm"><span className="text-slate-500">Page {page} of {pages}</span>
           <span className="flex gap-2">{page > 1 && <Link className="btn-ghost" href={qs(page - 1)}>Previous</Link>}{page < pages && <Link className="btn-ghost" href={qs(page + 1)}>Next</Link>}</span></div>

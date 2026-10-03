@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { getCtx, scopeClassIds } from "@/lib/scope";
 import { Card, PageHeader, Stat, Table, Badge } from "@/components/ui";
 import { fmtDate, pct } from "@/lib/utils";
+import { LinkMaker } from "@/components/link-maker";
+import { createResetLink } from "../../teachers/invite-actions";
+import { parentLink } from "../invite-actions";
 
 export default async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await getCtx();
@@ -23,7 +26,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       <PageHeader art="students" title={s.name} sub={`Class ${s.class.name} · Roll ${s.rollNo} · ${s.admissionNo}`} />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4"><Stat label="Attendance" value={`${pct(pres, total)}%`} tone="indigo" /><Stat label="Days absent" value={g("ABSENT")} tone="red" /><Stat label="Days late" value={g("LATE")} tone="amber" /><Stat label="Date of birth" value={s.dob ? fmtDate(s.dob) : "—"} /></div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Guardians">{s.guardians.length === 0 ? <p className="text-sm text-slate-500">No parent account linked.</p> : s.guardians.map((x) => <div key={x.id} className="text-sm"><b>{x.user.name}</b> · {x.user.email}</div>)}</Card>
+        <Card title="Guardians">{s.guardians.length === 0 ? <p className="text-sm text-slate-500">No parent account linked.</p> : s.guardians.map((x) => <div key={x.id} className="mb-3 text-sm"><b>{x.user.name}</b> · {x.user.email}<div className="mt-1"><LinkMaker compact action={createResetLink.bind(null, x.userId)} label="Password reset link" message="Reset your EduSphere password here:" /></div></div>)}<div className="mt-3 border-t border-slate-100 pt-3"><LinkMaker compact action={parentLink.bind(null, s.id)} label="Create parent access link" message={`Open this link to see ${s.name}’s school updates on EduSphere:`} /></div></Card>
         <Card title="Recent leave">{leaves.length === 0 ? <p className="text-sm text-slate-500">None.</p> : leaves.map((l) => <div key={l.id} className="flex justify-between text-sm"><span>{fmtDate(l.fromDate)} – {fmtDate(l.toDate)}</span><Badge tone={l.status === "APPROVED" ? "green" : l.status === "REJECTED" ? "red" : "amber"}>{l.status.toLowerCase()}</Badge></div>)}</Card>
         <Card title="Marks" className="lg:col-span-2" flush>
           {marks.length === 0 ? <p className="p-5 text-sm text-slate-500">No marks recorded.</p> : <Table head={["Exam", "Subject", "Score", "Max"]}>{marks.map((m) => <tr key={m.id}><td className="td">{m.exam.name}</td><td className="td">{subjects.get(m.subjectId)}</td><td className="td font-medium">{m.score}</td><td className="td">{m.exam.maxMarks}</td></tr>)}</Table>}

@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
+import { LinkMaker } from "@/components/link-maker";
+import { createResetLink } from "../teachers/invite-actions";
 
 export const metadata = { title: "Schools" };
 
@@ -25,7 +27,7 @@ async function createSchool(fd: FormData) {
   const year = new Date().getUTCFullYear();
   const s = await db.school.create({ data: { name, code, address: String(fd.get("address") ?? "") || null } });
   await db.academicYear.create({ data: { schoolId: s.id, name: `${year}-${String(year + 1).slice(2)}`, startsOn: new Date(Date.UTC(year, 5, 1)), endsOn: new Date(Date.UTC(year + 1, 2, 31)), current: true } });
-  await db.user.create({ data: { schoolId: s.id, email, name: adminName, role: "ADMIN", passwordHash: await bcrypt.hash(pw, 12) } });
+  await db.user.create({ data: { schoolId: s.id, email, name: adminName, role: "ADMIN", passwordHash: await bcrypt.hash(pw, 12), mustChangePassword: true } });
   await db.auditLog.create({ data: { userId: ctx.user.id, action: "school_create", entity: s.id } });
   revalidatePath("/schools");
   redirect("/schools?ok=1");
@@ -42,7 +44,7 @@ export default async function Schools({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const ctx = await getCtx();
   if (ctx.role !== "SUPER_ADMIN") return null;
-  const list = await db.school.findMany({ orderBy: { createdAt: "desc" }, include: { _count: { select: { students: true, teachers: true, users: true } } } });
+  const list = await db.school.findMany({ orderBy: { createdAt: "desc" }, include: { _count: { select: { students: true, teachers: true, users: true } }, users: { where: { role: "ADMIN" }, select: { id: true }, take: 1 } } });
   return (
     <>
       <PageHeader title="Schools" sub="Onboard a school and its first principal account. Each school’s data is fully separate." />
@@ -52,7 +54,7 @@ export default async function Schools({ searchParams }: { searchParams: Promise<
         <div className="sm:col-span-3 text-right"><button className="btn">Create school</button></div></form></Card>
       <Card flush><Table head={["School", "Code", "Students", "Teachers", "Users", "Created", "Status", ""]}>{list.map((s) => (
         <tr key={s.id}><td className="td font-medium">{s.name}</td><td className="td">{s.code}</td><td className="td">{s._count.students}</td><td className="td">{s._count.teachers}</td><td className="td">{s._count.users}</td><td className="td">{fmtDate(s.createdAt)}</td><td className="td"><Badge tone={s.active ? "green" : "red"}>{s.active ? "Active" : "Disabled"}</Badge></td>
-          <td className="td"><form action={toggle.bind(null, s.id)}><button className="text-xs text-brand-600 hover:underline">{s.active ? "Disable" : "Enable"}</button></form></td></tr>))}</Table></Card>
+          <td className="td"><form action={toggle.bind(null, s.id)}><button className="text-xs text-brand-600 hover:underline">{s.active ? "Disable" : "Enable"}</button></form>{s.users[0] && <div className="mt-1"><LinkMaker compact action={createResetLink.bind(null, s.users[0].id)} label="Principal reset link" message="Reset your EduSphere principal password here:" /></div>}</td></tr>))}</Table></Card>
     </>
   );
 }
