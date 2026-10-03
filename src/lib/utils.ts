@@ -3,6 +3,7 @@ export const fmtDate = (d: Date | string) =>
 export const isoDate = (d: Date | string) => new Date(d).toISOString().slice(0, 10);
 export const todayUTC = () => new Date(new Date().toISOString().slice(0, 10));
 export const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+export const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(n);
 export const cn = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(" ");
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const grade = (p: number) =>

@@ -8,6 +8,7 @@ export const PERMS = [
   { key: "ANNOUNCE", label: "Post announcements", hint: "Post and delete school announcements." },
   { key: "REPORTS", label: "View school reports", hint: "Open the analytics and reports page." },
   { key: "SUBSTITUTES", label: "Arrange substitutes", hint: "Assign substitute teachers for absent staff." },
+  { key: "FEES", label: "Collect fees", hint: "Set fee amounts, record payments, print receipts and send reminders." },
   { key: "PTM", label: "Schedule parent meetings", hint: "Create parent-teacher meeting days." },
 ] as const;
 export type Perm = (typeof PERMS)[number]["key"];

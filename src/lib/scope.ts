@@ -1,3 +1,4 @@
+import { pushToUsers } from "./push";
 import { db } from "./db";
 import { cookies } from "next/headers";
 import { requireUser } from "./session";
@@ -47,6 +48,7 @@ export const isStaff = (r: string) => r === "ADMIN" || r === "TEACHER";
 export async function notify(schoolId: string, userIds: string[], title: string, body?: string, link?: string) {
   if (!userIds.length) return;
   await db.notification.createMany({ data: userIds.map((userId) => ({ schoolId, userId, title, body, link })) });
+  try { await pushToUsers(userIds); } catch { /* push is best-effort */ }
 }
 
 /** Parent: pick the selected child (must belong to them). */
