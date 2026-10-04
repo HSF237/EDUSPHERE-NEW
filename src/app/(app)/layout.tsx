@@ -18,6 +18,7 @@ import { ownerEmails } from "@/lib/owner";
 import { GRACE_DAYS } from "@/lib/plans";
 import { fmtDate } from "@/lib/utils";
 import { Tour, type CheckItem } from "@/components/tour";
+import { LiveBell } from "@/components/live-bell";
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
 
@@ -109,10 +110,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3">
             <LangSwitch current={lang} />
             {switcher && <div className="lg:hidden">{switcher}</div>}
-            <Link href="/notifications" className="relative rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-700" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}>
-              <Icon name="bell" className="h-5 w-5" />
-              {unread > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-coral-500 px-1 text-[10px] font-bold text-white">{unread}</span>}
-            </Link>
+            <LiveBell initialUnread={unread} since={new Date().toISOString()} />
             <div className="hidden items-center gap-3 rounded-2xl bg-white py-1.5 pl-1.5 pr-4 shadow-sm ring-1 ring-slate-200 sm:flex">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">{initials}</span>
               <span className="text-sm font-semibold leading-tight">{user.name}<span className="block text-xs font-normal text-slate-500">{roleLabel}</span></span>
