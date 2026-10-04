@@ -124,6 +124,7 @@ model User {
   sent     Message[]
   members  ConversationMember[]
   notifs   Notification[]
+  waLink   WhatsAppLink?
 
   @@index([schoolId, role])
 }
@@ -726,4 +727,31 @@ model SiteAsset {
   mime      String
   data      Bytes
   updatedAt DateTime @default(now())
+}
+
+model WhatsAppLink {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  phone         String    @unique
+  code          String?
+  verified      Boolean   @default(false)
+  optIn         Boolean   @default(true)
+  lastInboundAt DateTime?
+  lastConvId    String?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  msgs WhatsAppMsg[]
+}
+
+model WhatsAppMsg {
+  id        String   @id
+  linkId    String
+  dir       String
+  convId    String?
+  createdAt DateTime @default(now())
+
+  link WhatsAppLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, createdAt])
 }

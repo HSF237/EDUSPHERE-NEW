@@ -1,4 +1,5 @@
 import { pushToUsers } from "./push";
+import { whatsappToUsers } from "./whatsapp";
 import { db } from "./db";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -66,10 +67,11 @@ export async function getCtx(opts?: { allowLocked?: boolean }) {
 
 export const isStaff = (r: string) => r === "ADMIN" || r === "TEACHER";
 
-export async function notify(schoolId: string, userIds: string[], title: string, body?: string, link?: string) {
+export async function notify(schoolId: string, userIds: string[], title: string, body?: string, link?: string, waBody?: string) {
   if (!userIds.length) return;
   await db.notification.createMany({ data: userIds.map((userId) => ({ schoolId, userId, title, body, link })) });
   try { await pushToUsers(userIds); } catch { /* push is best-effort */ }
+  try { await whatsappToUsers(userIds, title, waBody ?? body, link); } catch { /* WhatsApp is best-effort */ }
 }
 
 /** Parent: pick the selected child (must belong to them). */

@@ -34,7 +34,7 @@ export async function sendChat(input: { conversationId?: string; userId?: string
     db.conversation.update({ where: { id: convId }, data: { updatedAt: new Date() } }),
     db.conversationMember.updateMany({ where: { conversationId: convId, userId: ctx.user.id }, data: { lastReadAt: new Date() } }),
   ]);
-  await notify(ctx.schoolId, recipients, `Message from ${ctx.user.name}`, body.slice(0, 80), `/messages?c=${convId}`);
+  await notify(ctx.schoolId, recipients, `Message from ${ctx.user.name}`, body.slice(0, 80), `/messages?c=${convId}`, body);
   revalidatePath("/messages");
   return { id: convId };
 }
