@@ -17,7 +17,7 @@ function ResetBanner({ text }: { text: string }) {
   return <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{text}</div>;
 }
 
-export function LoginForm({ t }: { t: LoginText }) {
+export function LoginForm({ t, hideCreate }: { t: LoginText; hideCreate?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, undefined);
   return (
     <form action={action} className="card w-full space-y-4 p-7">
@@ -37,7 +37,7 @@ export function LoginForm({ t }: { t: LoginText }) {
       </div>
       <button className="btn w-full" disabled={pending}>{pending ? t.signingIn : t.signIn}</button>
       <p className="text-center text-xs text-slate-500">{t.forgot}</p>
-      <p className="text-center text-sm font-semibold"><Link className="text-brand-700 underline" href="/register-school">{t.create}</Link></p>
+      {!hideCreate && <p className="text-center text-sm font-semibold"><Link className="text-brand-700 underline" href="/register-school">{t.create}</Link></p>}
       <p className="text-center text-xs text-slate-500">{t.agree} <Link className="font-semibold text-brand-700 underline" href="/terms">{t.terms}</Link> {t.and} <Link className="font-semibold text-brand-700 underline" href="/privacy">{t.privacy}</Link>. <Link className="underline" href="/">{t.home}</Link></p>
     </form>
   );

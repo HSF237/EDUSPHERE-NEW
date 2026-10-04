@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { startPayment, demoPay, confirmPayment } from "./actions";
 
 type Price = { amount: number; months: number; gross: number; discount: number; kind: string };
-export type Matrix = Record<string, { label: string; students: number; plans: Record<string, Price & { label: string }> }>;
+export type Matrix = Record<string, { label: string; students: number; plans: Record<string, Price & { label: string; custom: number | null }> }>;
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open(): void } } }
@@ -19,18 +19,21 @@ function loadRzp() {
   });
 }
 
-export function PayPanel({ matrix, tier: t0, live }: { matrix: Matrix; tier: string; live: boolean }) {
+export function PayPanel({ matrix, tier: t0, live, customYearly, customActive }: { matrix: Matrix; tier: string; live: boolean; customYearly: number; customActive: boolean }) {
   const router = useRouter();
   const [tier, setTier] = useState(matrix[t0] ? t0 : "STARTER");
   const [plan, setPlan] = useState("YEAR");
+  const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const cur = matrix[tier].plans[plan];
+  const addon = custom && cur.custom !== null ? cur.custom : 0;
+  const total = cur.amount + addon;
 
   async function pay() {
     setBusy(true); setMsg(null);
     try {
-      const r = await startPayment(tier, plan);
+      const r = await startPayment(tier, plan, custom && cur.custom !== null);
       if ("error" in r) { setMsg({ ok: false, t: r.error }); return; }
       if (r.demo) {
         const d = await demoPay(r.paymentId);
@@ -69,8 +72,18 @@ export function PayPanel({ matrix, tier: t0, live }: { matrix: Matrix; tier: str
           </button>
         ))}
       </div>
+      <div className={`mt-4 rounded-xl border p-3 ${cur.custom === null ? "border-slate-200 bg-slate-50" : custom ? "border-brand-600 bg-brand-50" : "border-slate-200 bg-white"}`}>
+        <label className={`flex items-start gap-3 ${cur.custom === null ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-brand-600" checked={custom && cur.custom !== null} disabled={cur.custom === null} onChange={(e) => setCustom(e.target.checked)} />
+          <span className="text-sm">
+            <span className="font-semibold text-slate-800">Custom school add-on · {inr(customYearly)}/year</span>
+            <span className="block text-slate-600">Your own logo, colours and principal signature on every screen and printout, your school name on the sign-in page, and your own web address (e.g. app.yourschool.edu.in).</span>
+            <span className="block text-xs text-slate-500">{cur.custom === null ? "Only with a 1-year or 2-year plan, because a web address is bought a year at a time. Pick one of those to add it." : customActive ? "You already have this. Adding it again extends it." : `Adds ${inr(cur.custom)} for ${cur.custom / customYearly} year${cur.custom / customYearly > 1 ? "s" : ""}.`}</span>
+          </span>
+        </label>
+      </div>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={pay} disabled={busy} className="btn">{busy ? "Please wait…" : `${live ? "Pay" : "Pay (demo)"} ${inr(cur.amount)}`}</button>
+        <button type="button" onClick={pay} disabled={busy} className="btn">{busy ? "Please wait…" : `${live ? "Pay" : "Pay (demo)"} ${inr(total)}`}</button>
         {!live && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 ring-1 ring-amber-100">Demo payment: no real money is charged.</span>}
       </div>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`mt-3 rounded-lg border px-3 py-2 text-sm ${msg.ok ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>{msg.t}</p>}

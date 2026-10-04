@@ -8,6 +8,10 @@ import { PushToggle } from "@/components/push-toggle";
 import { LangSwitch } from "@/components/lang-switch";
 import { getLang } from "@/lib/i18n";
 import { NotifPrefsCard } from "./notif-card";
+import Link from "next/link";
+import { hasCustom } from "@/lib/custom";
+import { CUSTOM, inr } from "@/lib/plans";
+import { fmtDate } from "@/lib/utils";
 
 export const metadata = { title: "Settings" };
 
@@ -29,11 +33,18 @@ export default async function Settings() {
             </div>
           </Card>
         )}
-        {sch && (
-          <Card title="School branding" className="lg:col-span-2">
+        {sch && (hasCustom(sch) ? (
+          <Card title="School branding (Custom school)" className="lg:col-span-2">
+            <p className="mb-4 text-sm text-slate-600">Your Custom school add-on is active until <b>{fmtDate(sch.customUntil!)}</b>.{sch.customDomain ? <> Your web address: <b>{sch.customDomain}</b>.</> : " Your own web address will be set up by EduSphere. Message us the name you want, e.g. app.yourschool.edu.in."}</p>
             <BrandingForm colour={sch.brandColor ?? ""} signatoryName={sch.signatoryName ?? ""} signatoryTitle={sch.signatoryTitle ?? ""} hasLogo={!!sch.logoFileId} hasSignature={!!sch.signatureFileId} />
           </Card>
-        )}
+        ) : (
+          <Card title="Custom school add-on" className="lg:col-span-2">
+            <p className="text-sm text-slate-600">Put your school&apos;s own identity on EduSphere: your logo and colours on every screen, report card, ID card and receipt, your principal&apos;s signature, your school name on the sign-in page, and your own web address such as app.yourschool.edu.in.</p>
+            <p className="mt-2 text-sm text-slate-600"><b>{inr(CUSTOM.yearly)} per year</b>, available with a 1-year or 2-year plan (a web address is bought a year at a time).{sch.customUntil ? ` Your previous add-on ended on ${fmtDate(sch.customUntil)}; your logo and settings are kept and come back when you renew.` : ""}</p>
+            <Link href="/billing" className="btn mt-4 inline-block">Add it on the Billing page</Link>
+          </Card>
+        ))}
         <Card title="Language"><p className="mb-3 text-sm text-slate-600">Choose English, മലയാളം or हिन्दी for menus and headings on this device.</p><LangSwitch current={lang} /></Card>
         <Card title="Phone notifications">{vapid ? <PushToggle publicKey={vapid} /> : <p className="text-sm text-slate-500">Phone notifications are not switched on for this school yet. You can still install EduSphere on your home screen from your browser menu.</p>}</Card>
         <NotifPrefsCard userId={user.id} />

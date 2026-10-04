@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/scope";
 import { addMonths } from "@/lib/billing";
 import { createSession, getSession } from "@/lib/session";
+import { DOMAIN_RE, hasCustom } from "@/lib/custom";
 import { codeMatches, isUnlocked, lockOwner, ownerEmails, requireOwner, requireOwnerUser, tooManyFails, unlockOwner } from "@/lib/owner";
 
 export async function unlockAction(fd: FormData) {
@@ -41,6 +42,31 @@ export async function setComp(schoolId: string, fd: FormData) {
   await db.school.update({ where: { id: schoolId }, data });
   await db.auditLog.create({ data: { schoolId, userId: u.id, action: "owner_comp", detail: data.comped ? (data.compedUntil ? `until ${data.compedUntil.toISOString().slice(0, 10)}` : "forever") : "off" } });
   revalidatePath("/owner");
+}
+
+/** Grant, extend or remove the Custom school add-on, and set the school's own web address. */
+export async function setCustom(schoolId: string, fd: FormData) {
+  const u = await requireOwner();
+  const s = await db.school.findUnique({ where: { id: schoolId } });
+  if (!s) return;
+  const mode = String(fd.get("mode") ?? "keep");
+  const domain = String(fd.get("domain") ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const bad = (m: string): never => redirect("/owner?error=" + encodeURIComponent(m));
+  const data: { customUntil?: Date | null; customDomain?: string | null } = {};
+  if (mode === "year") data.customUntil = addMonths(hasCustom(s) ? s.customUntil! : new Date(), 12);
+  else if (mode === "forever") data.customUntil = new Date("2099-01-01T00:00:00Z");
+  else if (mode === "off") data.customUntil = null;
+  if (domain !== (s.customDomain ?? "")) {
+    if (domain && !DOMAIN_RE.test(domain)) bad("That doesn't look like a web address (e.g. app.yourschool.edu.in).");
+    if (domain && (await db.school.findFirst({ where: { customDomain: domain, id: { not: schoolId } } }))) bad("That address is already used by another school.");
+    data.customDomain = domain || null;
+  }
+  if (Object.keys(data).length) {
+    await db.school.update({ where: { id: schoolId }, data });
+    await db.auditLog.create({ data: { schoolId, userId: u.id, action: "owner_custom", detail: `${mode}${data.customDomain !== undefined ? ` domain=${data.customDomain ?? "none"}` : ""}` } });
+  }
+  revalidatePath("/owner");
+  redirect("/owner?ok=" + encodeURIComponent(`${s.name}: custom school settings saved.` + (data.customDomain ? ` Now add ${data.customDomain} to your hosting and point its DNS.` : "")));
 }
 
 export async function createFreeSchool(fd: FormData) {
