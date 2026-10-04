@@ -62,6 +62,16 @@ model School {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  comped          Boolean   @default(false)
+  compedUntil     DateTime?
+  compNote        String?
+  tier            String    @default("STARTER")
+  planCode        String?
+  paidUntil       DateTime?
+  introMonthsLeft Int       @default(3)
+  cancelledAt     DateTime?
+  billing         BillingPayment[]
+
   users         User[]
   years         AcademicYear[]
   classes       Class[]
@@ -688,4 +698,24 @@ model PushSub {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model BillingPayment {
+  id        String    @id @default(cuid())
+  schoolId  String
+  planCode  String
+  tier      String
+  months    Int
+  amount    Int
+  kind      String
+  status    String    @default("CREATED")
+  demo      Boolean   @default(false)
+  orderId   String?   @unique
+  paymentId String?
+  invoiceNo String?   @unique
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
 }

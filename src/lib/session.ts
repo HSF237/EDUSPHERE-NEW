@@ -17,13 +17,16 @@ export type Session = {
   schoolId: string | null;
   name: string;
   email: string;
+  /** Set only while the platform owner is in support mode: the owner's own user id. */
+  sup?: string;
 };
 
-export async function createSession(s: Session) {
+export async function createSession(s: Session, opts?: { hours?: number }) {
+  const hours = opts?.hours ?? 24 * 7;
   const token = await new SignJWT({ ...s })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${hours}h`)
     .sign(secret());
   const c = await cookies();
   c.set(COOKIE, token, {
@@ -31,7 +34,7 @@ export async function createSession(s: Session) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * hours,
   });
 }
 
