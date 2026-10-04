@@ -2,6 +2,7 @@
 import { useActionState } from "react";
 import { registerSchool } from "./actions";
 import { FormError } from "@/components/site/join-shell";
+import { PasswordInput } from "@/components/password-input";
 
 export function RegisterForm() {
   const [state, action, pending] = useActionState(registerSchool, undefined);
@@ -22,8 +23,8 @@ export function RegisterForm() {
         </div>
         <div><label className="label" htmlFor="email">Email</label><input id="email" name="email" type="email" autoComplete="email" required className="input" /></div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="label" htmlFor="pw">Password (8+ characters)</label><input id="pw" name="password" type="password" minLength={8} autoComplete="new-password" required className="input" /></div>
-          <div><label className="label" htmlFor="pw2">Repeat password</label><input id="pw2" name="confirm" type="password" minLength={8} autoComplete="new-password" required className="input" /></div>
+          <div><label className="label" htmlFor="pw">Password (8+ characters)</label><PasswordInput id="pw" name="password" minLength={8} autoComplete="new-password" required /></div>
+          <div><label className="label" htmlFor="pw2">Repeat password</label><PasswordInput id="pw2" name="confirm" minLength={8} autoComplete="new-password" required /></div>
         </div>
       </fieldset>
       <label className="flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" name="agree" className="mt-1 h-4 w-4 accent-indigo-600" required /><span>I agree to the <a className="font-semibold text-brand-700 underline" href="/terms" target="_blank">Terms &amp; Conditions</a> and <a className="font-semibold text-brand-700 underline" href="/privacy" target="_blank">Privacy Policy</a>, and confirm I’m authorised to set up this school.</span></label>

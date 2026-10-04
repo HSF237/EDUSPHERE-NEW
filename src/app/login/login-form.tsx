@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
 import { loginAction } from "@/lib/actions-auth";
+import { PasswordInput } from "@/components/password-input";
 
 export type LoginText = {
   welcome: string; sub: string; email: string; password: string; signIn: string; signingIn: string; forgot: string;
@@ -32,7 +33,7 @@ export function LoginForm({ t }: { t: LoginText }) {
       </div>
       <div>
         <label className="label" htmlFor="password">{t.password}</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required />
       </div>
       <button className="btn w-full" disabled={pending}>{pending ? t.signingIn : t.signIn}</button>
       <p className="text-center text-xs text-slate-500">{t.forgot}</p>
