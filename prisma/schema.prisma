@@ -70,6 +70,8 @@ model School {
   paidUntil       DateTime?
   introMonthsLeft Int       @default(3)
   cancelledAt     DateTime?
+  customUntil     DateTime?
+  customDomain    String?   @unique
   billing         BillingPayment[]
 
   users         User[]
@@ -709,6 +711,8 @@ model BillingPayment {
   months    Int
   amount    Int
   kind      String
+  addon     Boolean   @default(false)
+  addonAmount Int     @default(0)
   status    String    @default("CREATED")
   demo      Boolean   @default(false)
   orderId   String?   @unique

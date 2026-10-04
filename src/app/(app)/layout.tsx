@@ -19,6 +19,19 @@ import { GRACE_DAYS } from "@/lib/plans";
 import { fmtDate } from "@/lib/utils";
 import { Tour, type CheckItem } from "@/components/tour";
 import { LiveBell } from "@/components/live-bell";
+import { hasCustom } from "@/lib/custom";
+import { getSession } from "@/lib/session";
+import type { Metadata } from "next";
+
+/** Schools with the Custom school add-on see their own name in the browser tab. */
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const s = await getSession();
+    const u = s ? await db.user.findUnique({ where: { id: s.userId }, select: { school: { select: { name: true, customUntil: true } } } }) : null;
+    if (u?.school && hasCustom(u.school)) return { title: { default: u.school.name, template: `%s · ${u.school.name}` }, appleWebApp: { capable: true, title: u.school.name, statusBarStyle: "default" } };
+  } catch { /* fall back to the default title */ }
+  return {};
+}
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
 
@@ -39,9 +52,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx = await getCtx();
   const user = ctx.user;
   const lang = await getLang();
-  const sch = user.schoolId ? await db.school.findUnique({ where: { id: user.schoolId }, select: { brandColor: true, logoFileId: true } }) : null;
-  const vars = brandVars(sch?.brandColor);
-  const logo = sch?.logoFileId ? `/api/files/${sch.logoFileId}` : null;
+  const sch = user.schoolId ? await db.school.findUnique({ where: { id: user.schoolId }, select: { brandColor: true, logoFileId: true, customUntil: true } }) : null;
+  const custom = hasCustom(sch);
+  const vars = brandVars(custom ? sch?.brandColor : null);
+  const logo = custom && sch?.logoFileId ? `/api/files/${sch.logoFileId}` : null;
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
   // Opening the app anywhere counts as "delivered" for messages sent to this user (the grey double tick).
   await db.$executeRaw`UPDATE "ConversationMember" cm SET "lastDeliveredAt" = now() WHERE cm."userId" = ${user.id} AND EXISTS (SELECT 1 FROM "Message" m WHERE m."conversationId" = cm."conversationId" AND m."createdAt" > cm."lastDeliveredAt")`;
