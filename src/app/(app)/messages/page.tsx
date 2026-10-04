@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { allowedRecipients } from "./actions";
-import { ChatList, ChatPane, type ChatItem, type Contact } from "./chat-ui";
+import { cookies } from "next/headers";
+import { ChatEmpty, ChatList, ChatPane, ChatShell, type ChatItem, type Contact } from "./chat-ui";
 
 export const metadata = { title: "Messages" };
 
@@ -44,21 +45,17 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   const convByUser = new Map(convs.flatMap((c) => c.members.filter((m) => m.userId !== me).map((m) => [m.userId, c.id] as const)));
   const contacts: Contact[] = people.map((p) => ({ id: p.id, name: p.name, role: p.role, convId: convByUser.get(p.id) }));
   const open = !!pane;
+  const themeCookie = (await cookies()).get("es_chat_theme")?.value;
   return (
     <div className="-mx-4 -mt-4 sm:mx-0 sm:mt-0">
-      <div className="flex h-[calc(100dvh-4.25rem-4.5rem)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-card lg:h-[calc(100dvh-9rem)]">
-        <aside className={`${open ? "hidden lg:block" : "block"} w-full shrink-0 border-slate-100 lg:w-[22rem] lg:border-r xl:w-[24rem]`}>
+      <ChatShell initialDark={themeCookie === "dark"} hasCookie={!!themeCookie}>
+        <aside className={`${open ? "hidden lg:block" : "block"} w-full shrink-0 border-slate-100 lg:w-[22rem] lg:border-r xl:w-[24rem] dark:border-white/10`}>
           <ChatList chats={chats} contacts={contacts} activeId={shown?.id} activeUser={target?.id} canCompose={contacts.length > 0} />
         </aside>
-        <section className={`${open ? "fixed inset-0 z-[45] bg-white lg:static lg:z-auto" : "hidden lg:flex"} min-w-0 flex-1 lg:block`}>
-          {pane ?? (
-            <div className="grid h-full place-items-center bg-[#eceefa] p-8 text-center">
-              <div><div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full bg-white text-brand-600 shadow-sm"><svg className="h-9 w-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg></div>
-                <h2 className="text-lg font-bold text-slate-800">EduSphere Messages</h2><p className="mt-1 max-w-xs text-sm text-slate-500">Pick a chat on the left, or open Contacts to start a new conversation.</p></div>
-            </div>
-          )}
+        <section className={`${open ? "fixed inset-0 z-[45] bg-white dark:bg-[#17191f] lg:static lg:z-auto" : "hidden lg:flex"} min-w-0 flex-1 lg:block`}>
+          {pane ?? <ChatEmpty />}
         </section>
-      </div>
+      </ChatShell>
     </div>
   );
 }

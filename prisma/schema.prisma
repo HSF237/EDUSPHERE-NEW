@@ -719,3 +719,11 @@ model BillingPayment {
 
   @@index([schoolId, createdAt])
 }
+
+/// Site-wide images (e.g. messaging backgrounds) served from /api/asset/<name>.
+model SiteAsset {
+  name      String   @id
+  mime      String
+  data      Bytes
+  updatedAt DateTime @default(now())
+}
