@@ -37,5 +37,5 @@ export async function registerSchool(_: State, fd: FormData): Promise<State> {
     return u;
   });
   await createSession({ userId: user.id, role: user.role, schoolId: user.schoolId, name: user.name, email: user.email });
-  redirect("/dashboard");
+  redirect("/billing?welcome=1");
 }

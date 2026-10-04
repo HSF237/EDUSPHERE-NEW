@@ -31,6 +31,8 @@ export const NAV: NavItem[] = [
   { href: "/alerts", label: "Parent alerts", roles: ["ADMIN"], icon: "bell", group: "School", perm: "ATTENDANCE_APPROVE" },
   { href: "/substitutes", label: "Substitutes", roles: ["ADMIN", "TEACHER"], icon: "swap", group: "School" },
   { href: "/reports", label: "Reports", roles: ["ADMIN"], icon: "chart", group: "School", perm: "REPORTS" },
+  { href: "/billing", label: "Billing", roles: ["ADMIN"], icon: "wallet", group: "Account" },
+  { href: "/owner", label: "Owner tools", roles: ["SUPER_ADMIN"], icon: "shield", group: "Account" },
   { href: "/settings", label: "Settings", roles: all, icon: "settings", group: "Account" },
 ];
 
