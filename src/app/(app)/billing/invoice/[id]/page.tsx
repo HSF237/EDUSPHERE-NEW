@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { PrintButton } from "@/components/print-button";
 import { fmtDate } from "@/lib/utils";
-import { PLANS, TIERS, inr, type PlanCode, type TierCode } from "@/lib/plans";
+import { CUSTOM, PLANS, TIERS, inr, type PlanCode, type TierCode } from "@/lib/plans";
 import { SITE } from "@/lib/site";
 
 export const metadata = { title: "Invoice" };
@@ -28,7 +28,7 @@ export default async function Invoice({ params }: { params: Promise<{ id: string
         <div className="my-4 text-sm"><div className="text-slate-500">Billed to</div><div className="font-medium">{p.school.name}</div>{p.school.address && <div className="text-slate-600">{p.school.address}</div>}</div>
         <table className="w-full text-sm">
           <thead><tr className="border-b text-left text-slate-500"><th className="py-2">Description</th><th className="py-2 text-right">Amount</th></tr></thead>
-          <tbody><tr className="border-b"><td className="py-3">EduSphere {TIERS[p.tier as TierCode]?.label} · {PLANS[p.planCode as PlanCode]?.label} ({p.months} month{p.months > 1 ? "s" : ""}){p.kind === "INTRO" ? " · intro price" : ""}</td><td className="py-3 text-right">{inr(p.amount)}</td></tr></tbody>
+          <tbody><tr className="border-b"><td className="py-3">EduSphere {TIERS[p.tier as TierCode]?.label} · {PLANS[p.planCode as PlanCode]?.label} ({p.months} month{p.months > 1 ? "s" : ""}){p.kind === "INTRO" ? " · intro price" : ""}</td><td className="py-3 text-right">{inr(p.amount - p.addonAmount)}</td></tr>{p.addon && <tr className="border-b"><td className="py-3">{CUSTOM.label} add-on ({p.months / 12} year{p.months > 12 ? "s" : ""}): own logo, colours, signature and web address</td><td className="py-3 text-right">{inr(p.addonAmount)}</td></tr>}</tbody>
           <tfoot><tr><td className="pt-3 text-right font-semibold">Total paid</td><td className="pt-3 text-right text-lg font-extrabold text-brand-900">{inr(p.amount)}</td></tr></tfoot>
         </table>
         <p className="mt-6 text-xs text-slate-500">Payment reference: {p.paymentId ?? "—"}{p.demo ? " (demo payment, no money was charged)" : ""}</p>

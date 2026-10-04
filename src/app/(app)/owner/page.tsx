@@ -4,7 +4,8 @@ import { fmtDate } from "@/lib/utils";
 import { accessOf } from "@/lib/billing";
 import { isUnlocked, ownerConfigured, requireOwnerUser } from "@/lib/owner";
 import { PasswordInput } from "@/components/password-input";
-import { createFreeSchool, enterSupport, lockAction, setComp, unlockAction } from "./actions";
+import { createFreeSchool, enterSupport, lockAction, setComp, setCustom, unlockAction } from "./actions";
+import { hasCustom } from "@/lib/custom";
 
 export const metadata = { title: "Owner tools" };
 
@@ -50,12 +51,13 @@ export default async function Owner({ searchParams }: { searchParams: Promise<{ 
         </form>
       </Card>
       <Card title="All schools" flush className="mb-6">
-        <Table head={["School", "Students", "Access", "Free access", "Support"]}>{schools.map((s) => {
+        <Table head={["School", "Students", "Access", "Free access", "Custom school", "Support"]}>{schools.map((s) => {
           const a = accessOf(s);
           return (
             <tr key={s.id}><td className="td font-medium">{s.name}<div className="text-xs text-slate-400">{s.code}</div></td><td className="td">{s._count.students}</td>
               <td className="td"><Badge tone={tone[a.state]}>{lbl[a.state]}</Badge>{a.until && <div className="mt-1 text-xs text-slate-500">{a.state === "COMPED" ? "free until" : "paid until"} {fmtDate(a.until)}</div>}{s.comped && !s.compedUntil && <div className="mt-1 text-xs text-slate-500">forever</div>}</td>
               <td className="td"><form action={setComp.bind(null, s.id)} className="grid max-w-[15rem] gap-1.5"><CompFields compact /><button className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">Apply</button></form></td>
+              <td className="td"><div className="mb-1 text-xs text-slate-500">{hasCustom(s) ? `on until ${s.customUntil!.getUTCFullYear() >= 2099 ? "forever" : fmtDate(s.customUntil!)}` : "off"}</div><form action={setCustom.bind(null, s.id)} className="grid max-w-[15rem] gap-1.5"><select name="mode" defaultValue="keep" className="input" aria-label="Custom school add-on"><option value="keep">No change</option><option value="year">Add 1 year</option><option value="forever">Free forever</option><option value="off">Turn off</option></select><input name="domain" defaultValue={s.customDomain ?? ""} className="input" placeholder="app.school.edu.in" aria-label="Custom web address" /><button className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">Save</button></form></td>
               <td className="td"><form action={enterSupport.bind(null, s.id)}><button className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Open (view-only)</button></form></td></tr>);
         })}</Table>
       </Card>

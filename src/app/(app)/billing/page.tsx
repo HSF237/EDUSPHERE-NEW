@@ -4,7 +4,8 @@ import { getCtx } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
 import { accessOf } from "@/lib/billing";
-import { GRACE_DAYS, INTRO_MONTHS, PLANS, TIERS, inr, priceFor, type PlanCode, type TierCode } from "@/lib/plans";
+import { hasCustom } from "@/lib/custom";
+import { CUSTOM, GRACE_DAYS, INTRO_MONTHS, PLANS, TIERS, customPrice, inr, priceFor, type PlanCode, type TierCode } from "@/lib/plans";
 import { razorpayLive } from "@/lib/razorpay";
 import { PayPanel, type Matrix } from "./pay-panel";
 import { DataPromise } from "./promise";
@@ -31,7 +32,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
   ]);
   const matrix: Matrix = Object.fromEntries((Object.keys(TIERS) as TierCode[]).map((t) => [t, {
     label: TIERS[t].label, students: TIERS[t].students,
-    plans: Object.fromEntries((Object.keys(PLANS) as PlanCode[]).map((p) => [p, { ...priceFor(t, p, school.introMonthsLeft), label: PLANS[p].label }])),
+    plans: Object.fromEntries((Object.keys(PLANS) as PlanCode[]).map((p) => [p, { ...priceFor(t, p, school.introMonthsLeft), label: PLANS[p].label, custom: customPrice(p) }])),
   }]));
   const limit = (TIERS[school.tier as TierCode] ?? TIERS.STARTER).students;
   const over = students > limit && a.state !== "COMPED";
@@ -45,6 +46,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
           <Badge tone={tone[a.state]}>{label[a.state]}</Badge>
           {a.state === "COMPED" && <span className="text-sm text-slate-600">{school.compNote ?? "Complimentary access"}{a.until ? ` until ${fmtDate(a.until)}` : " with no end date"}.</span>}
           {(a.state === "ACTIVE" || a.state === "GRACE" || a.state === "LOCKED") && a.until && <span className="text-sm text-slate-600">{a.state === "ACTIVE" ? "Paid until" : "Expired on"} <b>{fmtDate(a.until)}</b>{a.state === "GRACE" && a.graceEnds && <> · full access continues until {fmtDate(a.graceEnds)}</>}</span>}
+          {hasCustom(school) && <Badge tone="indigo">Custom school until {fmtDate(school.customUntil!)}</Badge>}
           {school.planCode && <span className="text-sm text-slate-500">{TIERS[school.tier as TierCode]?.label} · {PLANS[school.planCode as PlanCode]?.label}</span>}
         </div>
         {a.state === "GRACE" && <p className="mt-3 text-sm text-amber-800">Your plan has ended. You have {GRACE_DAYS} days of full access to renew before the account becomes read-only.</p>}
@@ -60,13 +62,13 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
       {a.state !== "COMPED" && (
         <Card title={a.state === "ACTIVE" ? "Extend or change your plan" : "Choose a plan"} className="mb-6">
           <p className="mb-4 text-sm text-slate-500">First {INTRO_MONTHS} months on the monthly plan are at the intro price. 1-year and 2-year plans save 28%. {a.state === "ACTIVE" && "Payments add time to your current period."}</p>
-          <PayPanel matrix={matrix} tier={school.tier} live={razorpayLive()} />
+          <PayPanel matrix={matrix} tier={school.tier} live={razorpayLive()} customYearly={CUSTOM.yearly} customActive={hasCustom(school)} />
         </Card>
       )}
       <Card title="Payment history" flush className="mb-6">
         {history.length === 0 ? <p className="p-5 text-sm text-slate-500">No payments yet.</p> : (
           <Table head={["Date", "Plan", "Months", "Amount", "Invoice"]}>{history.map((h) => (
-            <tr key={h.id}><td className="td">{h.paidAt ? fmtDate(h.paidAt) : ""}</td><td className="td">{TIERS[h.tier as TierCode]?.label} · {PLANS[h.planCode as PlanCode]?.label}{h.demo && <span className="ml-2"><Badge tone="amber">Demo</Badge></span>}</td><td className="td">{h.months}</td><td className="td">{inr(h.amount)}</td><td className="td"><Link className="text-brand-600 hover:underline" href={`/billing/invoice/${h.id}`}>{h.invoiceNo}</Link></td></tr>))}</Table>
+            <tr key={h.id}><td className="td">{h.paidAt ? fmtDate(h.paidAt) : ""}</td><td className="td">{TIERS[h.tier as TierCode]?.label} · {PLANS[h.planCode as PlanCode]?.label}{h.addon && <span className="ml-2"><Badge tone="indigo">+ Custom school</Badge></span>}{h.demo && <span className="ml-2"><Badge tone="amber">Demo</Badge></span>}</td><td className="td">{h.months}</td><td className="td">{inr(h.amount)}</td><td className="td"><Link className="text-brand-600 hover:underline" href={`/billing/invoice/${h.id}`}>{h.invoiceNo}</Link></td></tr>))}</Table>
         )}
       </Card>
       <Card title="Our promise about your data"><DataPromise /></Card>
