@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { addMonths } from "@/lib/billing";
-import { isPlan, isTier, priceFor } from "@/lib/plans";
+import { customPrice, isPlan, isTier, priceFor, type PlanCode } from "@/lib/plans";
 import { createOrder, razorpayKeyId, razorpayLive, verifySignature } from "@/lib/razorpay";
 
 export type StartResult = { error: string } | { paymentId: string; amount: number; demo: boolean; orderId?: string; keyId?: string; name: string };
@@ -14,22 +14,25 @@ async function adminCtx() {
   return ctx;
 }
 
-export async function startPayment(tier: string, plan: string): Promise<StartResult> {
+export async function startPayment(tier: string, plan: string, custom = false): Promise<StartResult> {
   const ctx = await adminCtx();
   if (!ctx) return { error: "Only the principal can manage billing." };
   if (!isTier(tier) || !isPlan(plan)) return { error: "Pick a plan." };
   const school = await db.school.findUnique({ where: { id: ctx.schoolId } });
   if (!school) return { error: "School not found." };
   const p = priceFor(tier, plan, school.introMonthsLeft);
+  const addon = custom ? customPrice(plan as PlanCode) : 0;
+  if (custom && addon === null) return { error: "The Custom school add-on is only available with a 1-year or 2-year plan." };
+  const total = p.amount + (addon ?? 0);
   const live = razorpayLive();
   let orderId: string | undefined;
   try {
-    if (live) orderId = (await createOrder(p.amount, `es_${school.code}_${Date.now()}`)).id;
+    if (live) orderId = (await createOrder(total, `es_${school.code}_${Date.now()}`)).id;
   } catch {
     return { error: "Couldn't reach the payment gateway. Please try again." };
   }
-  const row = await db.billingPayment.create({ data: { schoolId: school.id, planCode: plan, tier, months: p.months, amount: p.amount, kind: p.kind, demo: !live, orderId } });
-  return { paymentId: row.id, amount: p.amount, demo: !live, orderId, keyId: live ? razorpayKeyId() : undefined, name: school.name };
+  const row = await db.billingPayment.create({ data: { schoolId: school.id, planCode: plan, tier, months: p.months, amount: total, kind: p.kind, addon: !!custom, addonAmount: addon ?? 0, demo: !live, orderId } });
+  return { paymentId: row.id, amount: total, demo: !live, orderId, keyId: live ? razorpayKeyId() : undefined, name: school.name };
 }
 
 /** Marks a payment paid (once) and extends the school's paid period. */
@@ -43,8 +46,9 @@ async function settle(paymentId: string, schoolId: string, ref: string | null) {
   const s = await db.school.findUnique({ where: { id: schoolId } });
   if (!s) return false;
   const base = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
-  await db.school.update({ where: { id: schoolId }, data: { paidUntil: addMonths(base, row.months), tier: row.tier, planCode: row.planCode, cancelledAt: null, introMonthsLeft: row.kind === "INTRO" ? Math.max(0, s.introMonthsLeft - row.months) : s.introMonthsLeft } });
-  await db.auditLog.create({ data: { schoolId, action: row.demo ? "billing_paid_demo" : "billing_paid", entity: row.id, detail: `${row.planCode}/${row.tier} ₹${row.amount}` } });
+  const customBase = s.customUntil && s.customUntil > now ? s.customUntil : now;
+  await db.school.update({ where: { id: schoolId }, data: { ...(row.addon ? { customUntil: addMonths(customBase, row.months) } : {}), paidUntil: addMonths(base, row.months), tier: row.tier, planCode: row.planCode, cancelledAt: null, introMonthsLeft: row.kind === "INTRO" ? Math.max(0, s.introMonthsLeft - row.months) : s.introMonthsLeft } });
+  await db.auditLog.create({ data: { schoolId, action: row.demo ? "billing_paid_demo" : "billing_paid", entity: row.id, detail: `${row.planCode}/${row.tier} ₹${row.amount}${row.addon ? " +custom" : ""}` } });
   return true;
 }
 

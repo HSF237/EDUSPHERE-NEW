@@ -14,6 +14,12 @@ export const PLANS = {
 } as const;
 export type PlanCode = keyof typeof PLANS;
 
+/** Paid add-on: the school's own logo, colours, signature, name on the login page and its own web address. Yearly only, because domains are bought a year at a time. */
+export const CUSTOM = { label: "Custom school", yearly: 2999 } as const;
+export const customAllowed = (plan: PlanCode) => PLANS[plan].months >= 12;
+/** Add-on price in rupees for a plan, or null when the plan is shorter than a year. */
+export const customPrice = (plan: PlanCode) => (customAllowed(plan) ? Math.round((CUSTOM.yearly * PLANS[plan].months) / 12) : null);
+
 export const INTRO_MONTHS = 3;
 export const GRACE_DAYS = 7;
 

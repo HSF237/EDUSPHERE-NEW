@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 import { isError, readUpload, storeFile } from "@/lib/files";
 import { validColour } from "@/lib/branding";
+import { hasCustom } from "@/lib/custom";
 
 type State = { error?: string; ok?: string } | undefined;
 
@@ -16,6 +17,7 @@ export async function saveBranding(_: State, fd: FormData): Promise<State> {
   const signatoryTitle = String(fd.get("signatoryTitle") ?? "").trim().slice(0, 80) || null;
   const school = await db.school.findUnique({ where: { id: ctx.schoolId } });
   if (!school) return { error: "School not found." };
+  if (!hasCustom(school)) return { error: "Branding is part of the Custom school add-on. Add it on the Billing page." };
   const data: Record<string, string | null> = { brandColor: colour || null, signatoryName, signatoryTitle };
   const old: string[] = [];
   for (const [field, col, rm] of [["logo", "logoFileId", "removeLogo"], ["signature", "signatureFileId", "removeSignature"]] as const) {
