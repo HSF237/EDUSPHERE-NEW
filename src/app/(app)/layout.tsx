@@ -13,6 +13,10 @@ import { ForcePassword } from "./force-password";
 import { LangSwitch } from "@/components/lang-switch";
 import { getLang, tr } from "@/lib/i18n";
 import { brandVars } from "@/lib/branding";
+import { exitSupport } from "./owner/actions";
+import { ownerEmails } from "@/lib/owner";
+import { GRACE_DAYS } from "@/lib/plans";
+import { fmtDate } from "@/lib/utils";
 
 const ROLE_LABEL = { SUPER_ADMIN: "Platform admin", ADMIN: "Principal / Admin", TEACHER: "Teacher", PARENT: "Parent" } as const;
 
@@ -41,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   await db.$executeRaw`UPDATE "ConversationMember" cm SET "lastDeliveredAt" = now() WHERE cm."userId" = ${user.id} AND EXISTS (SELECT 1 FROM "Message" m WHERE m."conversationId" = cm."conversationId" AND m."createdAt" > cm."lastDeliveredAt")`;
   if (user.mustChangePassword) return <ForcePassword name={user.name} />;
   const secret = process.env.AUTH_SECRET ?? "";
-  const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: tr(lang, n.label), icon: n.icon, group: n.group ? tr(lang, n.group) : n.group, badge: n.href === "/notifications" ? unread : undefined })));
+  const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).filter((n) => n.href !== "/owner" || ownerEmails().includes(user.email.toLowerCase())).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: tr(lang, n.label), icon: n.icon, group: n.group ? tr(lang, n.group) : n.group, badge: n.href === "/notifications" ? unread : undefined })));
   const quick = (user.role === "SUPER_ADMIN" ? ["/dashboard", "/schools", "/settings"] : ctx.mode === "SUBJECT" ? ["/dashboard", "/exams", "/portions", "/homework"] : ["/dashboard", "/attendance", "/homework", "/messages"])
     .map((h) => items.find((i) => i.base === h)).filter((i): i is (typeof items)[number] => !!i);
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -95,6 +99,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
+        {ctx.support && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-4 py-2 text-sm text-white sm:px-8">
+            <span><b>Support mode</b> · viewing {school} as the principal. View-only: changes are disabled. Logged.</span>
+            <form action={exitSupport}><button className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-slate-100">Exit support</button></form>
+          </div>
+        )}
+        {!ctx.support && ctx.access?.state === "GRACE" && (
+          <div role="status" className="bg-amber-50 px-4 py-2 text-sm text-amber-900 sm:px-8">Your plan has ended. Full access continues until {ctx.access.graceEnds ? fmtDate(ctx.access.graceEnds) : `${GRACE_DAYS} days`}. {user.role === "ADMIN" ? <Link href="/billing" className="font-semibold underline">Renew now</Link> : "Please ask your principal to renew."}</div>
+        )}
+        {!ctx.support && (ctx.access?.state === "LOCKED" || ctx.access?.state === "SETUP") && (
+          <div role="status" className="bg-red-50 px-4 py-2 text-sm text-red-900 sm:px-8">{ctx.access.state === "SETUP" ? "This school isn’t activated yet." : "This school’s plan has ended."} The account is read-only. Your data is safe and nothing is deleted. {user.role === "ADMIN" ? <Link href="/billing" className="font-semibold underline">{ctx.access.state === "SETUP" ? "Choose a plan" : "Renew to continue"}</Link> : "Please ask your principal to renew."}</div>
+        )}
         <main id="main" className="mx-auto max-w-6xl p-4 pb-28 sm:p-8 lg:pb-8">{children}</main>
         <BottomNav items={quick.map((q) => ({ href: q.href, base: q.base, label: q.label.split(" ")[0], icon: q.icon, badge: q.badge }))} />
       </div>
