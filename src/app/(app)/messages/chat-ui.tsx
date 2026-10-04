@@ -1,8 +1,52 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendChat } from "./actions";
+
+const ThemeCtx = createContext<{ dark: boolean; toggle: () => void }>({ dark: false, toggle: () => {} });
+const CSS = `.chat-bg{background-color:#f4f5fb;background-image:linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/api/asset/chat-light-desktop);background-size:cover;background-position:center}
+@media (max-width:639px){.chat-bg{background-image:linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/api/asset/chat-light-phone)}}
+.chat-dark .chat-bg{background-color:#121316;background-image:url(/api/asset/chat-dark-desktop)}
+@media (max-width:639px){.chat-dark .chat-bg{background-image:url(/api/asset/chat-dark-phone)}}`;
+
+/** Wraps the messaging screen. Dark mode applies to messaging only and is remembered in a cookie. */
+export function ChatShell({ initialDark, hasCookie, children }: { initialDark: boolean; hasCookie: boolean; children: React.ReactNode }) {
+  const [dark, setDark] = useState(initialDark);
+  useEffect(() => {
+    if (!hasCookie && window.matchMedia("(prefers-color-scheme: dark)").matches) setDark(true);
+  }, [hasCookie]);
+  function toggle() {
+    const next = !dark; setDark(next);
+    document.cookie = `es_chat_theme=${next ? "dark" : "light"}; path=/; max-age=31536000; samesite=lax`;
+  }
+  return (
+    <ThemeCtx.Provider value={{ dark, toggle }}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <div className={`${dark ? "chat-dark bg-[#17191f] sm:border-white/10" : "bg-white sm:border-slate-200"} flex h-[calc(100dvh-4.25rem-4.5rem)] overflow-hidden sm:rounded-3xl sm:border sm:shadow-card lg:h-[calc(100dvh-9rem)]`}>{children}</div>
+    </ThemeCtx.Provider>
+  );
+}
+
+export function ChatEmpty() {
+  return (
+    <div className="chat-bg grid h-full place-items-center p-8 text-center">
+      <div className="rounded-3xl bg-white/85 p-6 shadow-sm dark:bg-[#1d2027]/90"><div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full bg-white text-brand-600 shadow-sm dark:bg-[#2a2d36]"><svg className="h-9 w-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg></div>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">EduSphere Messages</h2><p className="mt-1 max-w-xs text-sm text-slate-500 dark:text-slate-400">Pick a chat on the left, or open Contacts to start a new conversation.</p></div>
+    </div>
+  );
+}
+
+function ThemeButton() {
+  const { dark, toggle } = useContext(ThemeCtx);
+  return (
+    <button type="button" onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={dark} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10">
+      {dark
+        ? <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+        : <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>}
+    </button>
+  );
+}
 
 export type Tick = "sent" | "delivered" | "read";
 export type ChatItem = { id: string; name: string; role: string; preview: string; at: string; mine: boolean; unread: number; subject: string; tick?: Tick };
@@ -66,36 +110,36 @@ export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: 
   const tz = useTz();
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="space-y-3 border-b border-slate-100 p-4 pb-3">
-        <div className="flex items-center justify-between"><h1 className="text-xl font-extrabold text-slate-900">Messages</h1></div>
+      <div className="space-y-3 border-b border-slate-100 p-4 pb-3 dark:border-white/10">
+        <div className="flex items-center justify-between"><h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">Messages</h1><ThemeButton /></div>
         <div className="relative">
           <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "chats" ? "Search chats" : "Search contacts"} className="input !rounded-full !pl-9 text-base sm:text-sm" aria-label="Search" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "chats" ? "Search chats" : "Search contacts"} className="input !rounded-full !pl-9 text-base sm:text-sm dark:!border-white/10 dark:!bg-[#22252d] dark:!text-slate-100" aria-label="Search" />
         </div>
         <div className="flex gap-2" role="tablist">
           {(["chats", "contacts"] as const).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab === t ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab === t ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15"}`}>
               {t === "chats" ? "Chats" : "Contacts"}{t === "chats" && unreadTotal > 0 && <span className="ml-1.5 rounded-full bg-white/90 px-1.5 text-[11px] text-brand-700">{unreadTotal}</span>}
             </button>
           ))}
         </div>
         {tab === "contacts" && roles.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {["ALL", ...roles].map((r) => <button key={r} onClick={() => setRole(r)} className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${role === r ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"}`}>{r === "ALL" ? "Everyone" : (ROLE[r] ?? r) + "s"}</button>)}
+            {["ALL", ...roles].map((r) => <button key={r} onClick={() => setRole(r)} className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${role === r ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900" : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300"}`}>{r === "ALL" ? "Everyone" : (ROLE[r] ?? r) + "s"}</button>)}
           </div>
         )}
       </div>
-      <ul className="min-h-0 flex-1 divide-y divide-slate-50 overflow-y-auto overscroll-contain pb-24 lg:pb-0">
+      <ul className="min-h-0 flex-1 divide-y divide-slate-50 overflow-y-auto dark:divide-white/5 overscroll-contain pb-24 lg:pb-0">
         {tab === "chats" ? (
           fc.length === 0 ? (
             <li className="p-8 text-center text-sm text-slate-500">{chats.length === 0 ? <>No chats yet.{canCompose && <> <button onClick={() => setTab("contacts")} className="font-semibold text-brand-600">Start one from Contacts</button>.</>}</> : "No chats match your search."}</li>
           ) : fc.map((c) => (
             <li key={c.id}>
-              <Link href={`/messages?c=${c.id}`} className={`flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 ${activeId === c.id ? "bg-brand-50" : ""}`}>
+              <Link href={`/messages?c=${c.id}`} className={`flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-white/5 ${activeId === c.id ? "bg-brand-50 dark:bg-white/10" : ""}`}>
                 <Avatar name={c.name} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2"><span className={`truncate text-[15px] ${c.unread ? "font-bold text-slate-900" : "font-semibold text-slate-800"}`}>{c.name}</span><time suppressHydrationWarning className={`shrink-0 text-xs ${c.unread ? "font-semibold text-brand-600" : "text-slate-400"}`}>{when(c.at, tz)}</time></div>
-                  <div className="flex items-center justify-between gap-2"><span className={`truncate text-sm ${c.unread ? "font-medium text-slate-700" : "text-slate-500"}`}>{c.mine && c.tick && <span className="mr-1 inline-block align-[-1px] text-slate-400"><Ticks tick={c.tick} /></span>}{c.mine && <span className="text-slate-400">You: </span>}{c.preview}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white">{c.unread}</span>}</div>
+                  <div className="flex items-baseline justify-between gap-2"><span className={`truncate text-[15px] ${c.unread ? "font-bold text-slate-900 dark:text-white" : "font-semibold text-slate-800 dark:text-slate-100"}`}>{c.name}</span><time suppressHydrationWarning className={`shrink-0 text-xs ${c.unread ? "font-semibold text-brand-600 dark:text-brand-300" : "text-slate-400"}`}>{when(c.at, tz)}</time></div>
+                  <div className="flex items-center justify-between gap-2"><span className={`truncate text-sm ${c.unread ? "font-medium text-slate-700 dark:text-slate-200" : "text-slate-500 dark:text-slate-400"}`}>{c.mine && c.tick && <span className="mr-1 inline-block align-[-1px] text-slate-400"><Ticks tick={c.tick} /></span>}{c.mine && <span className="text-slate-400">You: </span>}{c.preview}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white">{c.unread}</span>}</div>
                 </div>
               </Link>
             </li>
@@ -104,9 +148,9 @@ export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: 
           <li className="p-8 text-center text-sm text-slate-500">No contacts found.</li>
         ) : fp.map((p) => (
           <li key={p.id}>
-            <Link href={p.convId ? `/messages?c=${p.convId}` : `/messages?u=${p.id}`} className={`flex items-center gap-3 px-4 py-2.5 transition hover:bg-slate-50 ${activeUser === p.id ? "bg-brand-50" : ""}`}>
+            <Link href={p.convId ? `/messages?c=${p.convId}` : `/messages?u=${p.id}`} className={`flex items-center gap-3 px-4 py-2.5 transition hover:bg-slate-50 dark:hover:bg-white/5 ${activeUser === p.id ? "bg-brand-50 dark:bg-white/10" : ""}`}>
               <Avatar name={p.name} size="h-10 w-10" />
-              <div className="min-w-0 flex-1"><div className="truncate text-[15px] font-semibold text-slate-800">{p.name}</div><div className="text-xs text-slate-500">{ROLE[p.role] ?? p.role}</div></div>
+              <div className="min-w-0 flex-1"><div className="truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100">{p.name}</div><div className="text-xs text-slate-500">{ROLE[p.role] ?? p.role}</div></div>
             </Link>
           </li>
         ))}
@@ -146,19 +190,20 @@ export function ChatPane({ peer, convId, subject, messages, peerReadAt, peerDeli
   const tickOf = (at: string): Tick => (peerReadAt && at <= peerReadAt ? "read" : peerDeliveredAt && at <= peerDeliveredAt ? "delivered" : "sent");
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4">
-        <Link href="/messages" aria-label="Back to chats" className="grid h-10 w-10 place-items-center rounded-full text-slate-600 hover:bg-slate-100 lg:hidden"><svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg></Link>
+      <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-[#17191f] pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4">
+        <Link href="/messages" aria-label="Back to chats" className="grid h-10 w-10 place-items-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10 lg:hidden"><svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg></Link>
         <Avatar name={peer.name} size="h-10 w-10" />
-        <div className="min-w-0"><div className="truncate font-bold text-slate-900">{peer.name}</div><div className="truncate text-xs text-slate-500">{ROLE[peer.role] ?? peer.role}{subject && subject !== "Chat" ? ` · ${subject}` : ""}</div></div>
+        <div className="min-w-0 flex-1"><div className="truncate font-bold text-slate-900 dark:text-slate-100">{peer.name}</div><div className="truncate text-xs text-slate-500 dark:text-slate-400">{ROLE[peer.role] ?? peer.role}{subject && subject !== "Chat" ? ` · ${subject}` : ""}</div></div>
+        <ThemeButton />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#eceefa] px-3 py-4 sm:px-6">
-        {rows.length === 0 && <div className="mx-auto mt-10 max-w-xs rounded-2xl bg-white/80 p-5 text-center text-sm text-slate-500">Say hello to <b className="text-slate-700">{peer.name}</b>. Messages are private between you and them.</div>}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain chat-bg px-3 py-4 sm:px-6">
+        {rows.length === 0 && <div className="mx-auto mt-10 max-w-xs rounded-2xl bg-white/85 p-5 text-center text-sm text-slate-500 dark:bg-[#1d2027]/90 dark:text-slate-400">Say hello to <b className="text-slate-700 dark:text-slate-200">{peer.name}</b>. Messages are private between you and them.</div>}
         <div className="mx-auto flex max-w-3xl flex-col gap-1.5">
           {rows.map((r) => "sep" in r ? (
-            <div key={r.id} className="my-2 text-center"><span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm"><span suppressHydrationWarning>{dayLabel(r.sep, tz)}</span></span></div>
+            <div key={r.id} className="my-2 text-center"><span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm dark:bg-[#2a2d36]/95 dark:text-slate-300"><span suppressHydrationWarning>{dayLabel(r.sep, tz)}</span></span></div>
           ) : (
             <div key={r.id} className={`flex ${r.mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-[15px] shadow-sm sm:max-w-[70%] ${r.mine ? "rounded-br-md bg-brand-600 text-white" : "rounded-bl-md bg-white text-slate-800"} ${r.pending ? "opacity-70" : ""}`}>
+              <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-[15px] shadow-sm sm:max-w-[70%] ${r.mine ? "rounded-br-md bg-brand-600 text-white" : "rounded-bl-md bg-white text-slate-800 dark:bg-[#2a2d36] dark:text-slate-100"} ${r.pending ? "opacity-70" : ""}`}>
                 <p className="whitespace-pre-wrap break-words">{r.body}</p>
                 <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${r.mine ? "text-indigo-200" : "text-slate-400"}`}>
                   <time suppressHydrationWarning dateTime={r.at}>{clock(r.at, tz)}</time>
@@ -171,11 +216,11 @@ export function ChatPane({ peer, convId, subject, messages, peerReadAt, peerDeli
         <div ref={end} />
       </div>
       {err && <p className="bg-red-50 px-4 py-1.5 text-xs text-red-700">{err}</p>}
-      <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex items-end gap-2 border-t border-slate-100 bg-white p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
+      <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex items-end gap-2 border-t border-slate-100 bg-white p-2.5 dark:border-white/10 dark:bg-[#17191f] pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
         <textarea ref={box} rows={1} value={text} maxLength={4000} aria-label="Message" placeholder="Type a message"
           onChange={(e) => { setText(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(min-width: 1024px)").matches) { e.preventDefault(); send(); } }}
-          className="input max-h-[120px] min-h-[44px] flex-1 resize-none !rounded-3xl py-2.5 text-base sm:text-sm" />
+          className="input max-h-[120px] min-h-[44px] flex-1 resize-none !rounded-3xl py-2.5 text-base sm:text-sm dark:!border-white/10 dark:!bg-[#22252d] dark:!text-slate-100" />
         <button type="submit" disabled={!text.trim()} aria-label="Send" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-600 text-white shadow transition hover:bg-brand-700 disabled:opacity-40"><svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l-.01 6.5L15 12 3.39 13.9z" /></svg></button>
       </form>
     </div>
