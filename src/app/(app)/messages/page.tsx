@@ -29,16 +29,17 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   const shown = active ?? convWithUser;
   if (shown) {
     const [msgs] = await Promise.all([db.message.findMany({ where: { conversationId: shown.id }, orderBy: { createdAt: "asc" }, take: 300 })]);
-    await db.conversationMember.updateMany({ where: { conversationId: shown.id, userId: me }, data: { lastReadAt: new Date() } });
+    await db.conversationMember.updateMany({ where: { conversationId: shown.id, userId: me }, data: { lastReadAt: new Date(), lastDeliveredAt: new Date() } });
     const peer = peerOf(shown);
-    const peerRead = shown.members.find((m) => m.userId !== me)?.lastReadAt;
-    pane = <ChatPane key={shown.id} peer={peer} convId={shown.id} subject={shown.subject} messages={msgs.map((m) => ({ id: m.id, mine: m.senderId === me, body: m.body, at: m.createdAt.toISOString() }))} peerReadAt={peerRead ? peerRead.toISOString() : null} />;
+    const peerM = shown.members.find((m) => m.userId !== me);
+    const peerRead = peerM?.lastReadAt;
+    pane = <ChatPane key={shown.id} peer={peer} convId={shown.id} subject={shown.subject} messages={msgs.map((m) => ({ id: m.id, mine: m.senderId === me, body: m.body, at: m.createdAt.toISOString() }))} peerReadAt={peerRead ? peerRead.toISOString() : null} peerDeliveredAt={peerM ? peerM.lastDeliveredAt.toISOString() : null} />;
   } else if (target) {
-    pane = <ChatPane key={target.id} peer={target} messages={[]} peerReadAt={null} />;
+    pane = <ChatPane key={target.id} peer={target} messages={[]} peerReadAt={null} peerDeliveredAt={null} />;
   }
   const chats: ChatItem[] = convs.map((c, i) => {
-    const l = c.messages[0]; const p = peerOf(c);
-    return { id: c.id, name: p.name, role: p.role, preview: l?.body ?? c.subject, at: (l?.createdAt ?? c.updatedAt).toISOString(), mine: l?.senderId === me, unread: shown?.id === c.id ? 0 : unread[i], subject: c.subject };
+    const l = c.messages[0]; const p = peerOf(c); const pm = c.members.find((m) => m.userId !== me); const at = (l?.createdAt ?? c.updatedAt).toISOString();
+    return { id: c.id, name: p.name, role: p.role, preview: l?.body ?? c.subject, at, mine: l?.senderId === me, tick: pm && at <= pm.lastReadAt.toISOString() ? "read" : pm && at <= pm.lastDeliveredAt.toISOString() ? "delivered" : "sent", unread: shown?.id === c.id ? 0 : unread[i], subject: c.subject };
   });
   const convByUser = new Map(convs.flatMap((c) => c.members.filter((m) => m.userId !== me).map((m) => [m.userId, c.id] as const)));
   const contacts: Contact[] = people.map((p) => ({ id: p.id, name: p.name, role: p.role, convId: convByUser.get(p.id) }));

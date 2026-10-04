@@ -4,7 +4,8 @@ import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } fr
 import { useRouter } from "next/navigation";
 import { sendChat } from "./actions";
 
-export type ChatItem = { id: string; name: string; role: string; preview: string; at: string; mine: boolean; unread: number; subject: string };
+export type Tick = "sent" | "delivered" | "read";
+export type ChatItem = { id: string; name: string; role: string; preview: string; at: string; mine: boolean; unread: number; subject: string; tick?: Tick };
 export type Contact = { id: string; name: string; role: string; convId?: string };
 export type Msg = { id: string; mine: boolean; body: string; at: string; pending?: boolean };
 
@@ -17,12 +18,40 @@ export function Avatar({ name, size = "h-11 w-11" }: { name: string; size?: stri
   return <span className={`grid ${size} shrink-0 place-items-center rounded-full text-sm font-bold text-white ${tone(name)}`}>{initials(name)}</span>;
 }
 
-function when(iso: string) {
-  const d = new Date(iso); const now = new Date();
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const y = new Date(now); y.setDate(now.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return "Yesterday";
-  return d.toLocaleDateString([], { day: "2-digit", month: "short" });
+// Times are shown in the viewer's own time zone. Until the browser tells us its zone (right after load),
+// we use India time, so the server-rendered HTML and the first client render are identical and never show UTC.
+const DEFAULT_TZ = "Asia/Kolkata";
+function useTz() {
+  const [tz, setTz] = useState(DEFAULT_TZ);
+  useEffect(() => { try { setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TZ); } catch { /* keep default */ } }, []);
+  return tz;
+}
+const dayKey = (d: Date, tz: string) => d.toLocaleDateString("en-CA", { timeZone: tz });
+const clock = (iso: string, tz: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz }).toUpperCase();
+function when(iso: string, tz: string) {
+  const d = new Date(iso);
+  const k = dayKey(d, tz);
+  if (k === dayKey(new Date(), tz)) return clock(iso, tz);
+  if (k === dayKey(new Date(Date.now() - 864e5), tz)) return "Yesterday";
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: tz });
+}
+function dayLabel(iso: string, tz: string) {
+  const d = new Date(iso);
+  const k = dayKey(d, tz);
+  if (k === dayKey(new Date(), tz)) return "Today";
+  if (k === dayKey(new Date(Date.now() - 864e5), tz)) return "Yesterday";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: tz });
+}
+
+/** WhatsApp-style ticks: one tick = sent, two grey ticks = delivered, two blue ticks = read. */
+export function Ticks({ tick, pending }: { tick: Tick; pending?: boolean }) {
+  if (pending) return <span aria-label="Sending" className="opacity-80">{"\u{1F552}"}</span>;
+  const label = tick === "read" ? "Read" : tick === "delivered" ? "Delivered" : "Sent";
+  return (
+    <svg role="img" aria-label={label} viewBox="0 0 18 12" className={`h-3 w-[18px] ${tick === "read" ? "text-sky-300" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {tick === "sent" ? <path d="M3 6.5 6.5 10 14 2" /> : <><path d="M1.5 6.5 5 10 12 2" /><path d="M7.5 9.5 8.5 10 16 2" /></>}
+    </svg>
+  );
 }
 
 export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: { chats: ChatItem[]; contacts: Contact[]; activeId?: string; activeUser?: string; canCompose: boolean }) {
@@ -34,6 +63,7 @@ export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: 
   const roles = useMemo(() => [...new Set(contacts.map((c) => c.role))], [contacts]);
   const fp = contacts.filter((c) => (role === "ALL" || c.role === role) && (!n || c.name.toLowerCase().includes(n)));
   const unreadTotal = chats.reduce((a, c) => a + c.unread, 0);
+  const tz = useTz();
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="space-y-3 border-b border-slate-100 p-4 pb-3">
@@ -64,8 +94,8 @@ export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: 
               <Link href={`/messages?c=${c.id}`} className={`flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 ${activeId === c.id ? "bg-brand-50" : ""}`}>
                 <Avatar name={c.name} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2"><span className={`truncate text-[15px] ${c.unread ? "font-bold text-slate-900" : "font-semibold text-slate-800"}`}>{c.name}</span><time suppressHydrationWarning className={`shrink-0 text-xs ${c.unread ? "font-semibold text-brand-600" : "text-slate-400"}`}>{when(c.at)}</time></div>
-                  <div className="flex items-center justify-between gap-2"><span className={`truncate text-sm ${c.unread ? "font-medium text-slate-700" : "text-slate-500"}`}>{c.mine && <span className="text-slate-400">You: </span>}{c.preview}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white">{c.unread}</span>}</div>
+                  <div className="flex items-baseline justify-between gap-2"><span className={`truncate text-[15px] ${c.unread ? "font-bold text-slate-900" : "font-semibold text-slate-800"}`}>{c.name}</span><time suppressHydrationWarning className={`shrink-0 text-xs ${c.unread ? "font-semibold text-brand-600" : "text-slate-400"}`}>{when(c.at, tz)}</time></div>
+                  <div className="flex items-center justify-between gap-2"><span className={`truncate text-sm ${c.unread ? "font-medium text-slate-700" : "text-slate-500"}`}>{c.mine && c.tick && <span className="mr-1 inline-block align-[-1px] text-slate-400"><Ticks tick={c.tick} /></span>}{c.mine && <span className="text-slate-400">You: </span>}{c.preview}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white">{c.unread}</span>}</div>
                 </div>
               </Link>
             </li>
@@ -85,8 +115,9 @@ export function ChatList({ chats, contacts, activeId, activeUser, canCompose }: 
   );
 }
 
-export function ChatPane({ peer, convId, subject, messages, peerReadAt }: { peer: { id: string; name: string; role: string }; convId?: string; subject?: string; messages: Msg[]; peerReadAt: string | null }) {
+export function ChatPane({ peer, convId, subject, messages, peerReadAt, peerDeliveredAt }: { peer: { id: string; name: string; role: string }; convId?: string; subject?: string; messages: Msg[]; peerReadAt: string | null; peerDeliveredAt: string | null }) {
   const router = useRouter();
+  const tz = useTz();
   const [opt, addOpt] = useOptimistic(messages, (s, m: Msg) => [...s, m]);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
@@ -111,8 +142,8 @@ export function ChatPane({ peer, convId, subject, messages, peerReadAt }: { peer
   }
   const rows: (Msg | { sep: string; id: string })[] = [];
   let last = "";
-  for (const m of opt) { const d = new Date(m.at).toDateString(); if (d !== last) { last = d; rows.push({ sep: d, id: "s" + d }); } rows.push(m); }
-  const label = (d: string) => { const x = new Date(d); const now = new Date(); const y = new Date(now); y.setDate(now.getDate() - 1); return x.toDateString() === now.toDateString() ? "Today" : x.toDateString() === y.toDateString() ? "Yesterday" : x.toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" }); };
+  for (const m of opt) { const d = dayKey(new Date(m.at), tz); if (d !== last) { last = d; rows.push({ sep: m.at, id: "s" + d }); } rows.push(m); }
+  const tickOf = (at: string): Tick => (peerReadAt && at <= peerReadAt ? "read" : peerDeliveredAt && at <= peerDeliveredAt ? "delivered" : "sent");
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4">
@@ -124,14 +155,14 @@ export function ChatPane({ peer, convId, subject, messages, peerReadAt }: { peer
         {rows.length === 0 && <div className="mx-auto mt-10 max-w-xs rounded-2xl bg-white/80 p-5 text-center text-sm text-slate-500">Say hello to <b className="text-slate-700">{peer.name}</b>. Messages are private between you and them.</div>}
         <div className="mx-auto flex max-w-3xl flex-col gap-1.5">
           {rows.map((r) => "sep" in r ? (
-            <div key={r.id} className="my-2 text-center"><span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm"><span suppressHydrationWarning>{label(r.sep)}</span></span></div>
+            <div key={r.id} className="my-2 text-center"><span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm"><span suppressHydrationWarning>{dayLabel(r.sep, tz)}</span></span></div>
           ) : (
             <div key={r.id} className={`flex ${r.mine ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-[15px] shadow-sm sm:max-w-[70%] ${r.mine ? "rounded-br-md bg-brand-600 text-white" : "rounded-bl-md bg-white text-slate-800"} ${r.pending ? "opacity-70" : ""}`}>
                 <p className="whitespace-pre-wrap break-words">{r.body}</p>
                 <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${r.mine ? "text-indigo-200" : "text-slate-400"}`}>
-                  <time suppressHydrationWarning>{new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
-                  {r.mine && <span className={peerReadAt && r.at <= peerReadAt ? "text-sky-300" : ""} aria-label={peerReadAt && r.at <= peerReadAt ? "Read" : "Sent"}>{r.pending ? "…" : peerReadAt && r.at <= peerReadAt ? "✓✓" : "✓"}</span>}
+                  <time suppressHydrationWarning dateTime={r.at}>{clock(r.at, tz)}</time>
+                  {r.mine && <Ticks tick={tickOf(r.at)} pending={r.pending} />}
                 </div>
               </div>
             </div>
