@@ -37,6 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const vars = brandVars(sch?.brandColor);
   const logo = sch?.logoFileId ? `/api/files/${sch.logoFileId}` : null;
   const unread = await db.notification.count({ where: { userId: user.id, read: false } });
+  // Opening the app anywhere counts as "delivered" for messages sent to this user (the grey double tick).
+  await db.$executeRaw`UPDATE "ConversationMember" cm SET "lastDeliveredAt" = now() WHERE cm."userId" = ${user.id} AND EXISTS (SELECT 1 FROM "Message" m WHERE m."conversationId" = cm."conversationId" AND m."createdAt" > cm."lastDeliveredAt")`;
   if (user.mustChangePassword) return <ForcePassword name={user.name} />;
   const secret = process.env.AUTH_SECRET ?? "";
   const items = await Promise.all(navFor(user.role, ctx.mode, ctx.perms).map(async (n) => ({ href: await keyedHref(user.id, n.href, secret), base: n.href, label: tr(lang, n.label), icon: n.icon, group: n.group ? tr(lang, n.group) : n.group, badge: n.href === "/notifications" ? unread : undefined })));
