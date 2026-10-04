@@ -1,7 +1,10 @@
 import { pushToUsers } from "./push";
 import { db } from "./db";
-import { cookies } from "next/headers";
-import { requireUser } from "./session";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { cache } from "react";
+import { requireUser, getSession } from "./session";
+import { accessOf, isReadOnly } from "./billing";
 import type { Perm } from "./perms";
 
 export const WORKSPACE_COOKIE = "es_class";
@@ -10,8 +13,26 @@ export type Workspace = { id: string; name: string; mode: "CLASS" | "SUBJECT"; s
 export type Ctx = Awaited<ReturnType<typeof getCtx>>;
 
 /** Resolves the signed-in user plus what they are allowed to see. Every page/action starts here. */
-export async function getCtx() {
+const gate = cache(() => ({ done: false }));
+
+/**
+ * `allowLocked` lets billing/export/password actions run on a read-only (unpaid) school.
+ * Enforcement runs once per request, on the first call, which for a server action is the action itself.
+ */
+export async function getCtx(opts?: { allowLocked?: boolean }) {
   const user = await requireUser();
+  const sess = await getSession();
+  const support = !!sess?.sup;
+  const access = user.school ? accessOf(user.school) : null;
+  const g = gate();
+  if (!g.done) {
+    g.done = true;
+    const isAction = !!(await headers()).get("next-action");
+    if (isAction) {
+      if (support) redirect("/dashboard?viewonly=1");
+      if (user.role !== "SUPER_ADMIN" && access && isReadOnly(access.state) && !opts?.allowLocked) redirect("/billing?locked=1");
+    }
+  }
   const schoolId = user.schoolId;
   let classIds: string[] = [];
   let childIds: string[] = [];
@@ -40,7 +61,7 @@ export async function getCtx() {
     }
   }
   const perms = (user.role === "TEACHER" ? user.teacher?.permissions ?? [] : []) as string[];
-  return { user, schoolId: schoolId ?? "", role: user.role, classIds, childIds, teacherId: user.teacher?.id ?? null, workspaces, active, mode: (active?.mode ?? null) as "CLASS" | "SUBJECT" | null, perms, position: user.teacher?.position ?? null };
+  return { support, access, user, schoolId: schoolId ?? "", role: user.role, classIds, childIds, teacherId: user.teacher?.id ?? null, workspaces, active, mode: (active?.mode ?? null) as "CLASS" | "SUBJECT" | null, perms, position: user.teacher?.position ?? null };
 }
 
 export const isStaff = (r: string) => r === "ADMIN" || r === "TEACHER";
