@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 const config: Config = {
+  // Dark mode exists for the messaging screen only: it switches on under an element with the "chat-dark" class.
+  darkMode: ["selector", ".chat-dark"],
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
