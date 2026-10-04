@@ -31,7 +31,7 @@ export function Logo({ light = false }: { light?: boolean }) {
 export async function SiteHeader() {
   const lang = await getLang();
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5">
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">

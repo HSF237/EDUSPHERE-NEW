@@ -10,7 +10,7 @@ type Item = { href: string; base?: string; label: string; icon: IconName; badge?
 export function BottomNav({ items }: { items: Item[] }) {
   const path = stripKey(usePathname());
   return (
-    <nav aria-label="Quick links" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(30,27,75,.2)] backdrop-blur lg:hidden">
+    <nav aria-label="Quick links" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(30,27,75,.2)] lg:hidden">
       <ul className="mx-auto grid max-w-md" style={{ gridTemplateColumns: `repeat(${items.length + 1}, minmax(0, 1fr))` }}>
         {items.map((i) => {
           const base = i.base ?? i.href;

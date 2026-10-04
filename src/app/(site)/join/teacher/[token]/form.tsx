@@ -2,6 +2,7 @@
 import { useActionState, useState } from "react";
 import { joinAsTeacher } from "../../actions";
 import { FormError } from "@/components/site/join-shell";
+import { PasswordInput } from "@/components/password-input";
 
 function SelectAll({ name, label }: { name: string; label: string }) {
   const [all, setAll] = useState(false);
@@ -71,8 +72,8 @@ export function TeacherJoinForm({ token, school, classes, subjects }: { token: s
       <fieldset className="space-y-4">
         <legend className="text-sm font-bold uppercase tracking-wider text-brand-600">Choose a password</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="label" htmlFor="pw">Password (8+ characters)</label><input id="pw" name="password" type="password" minLength={8} autoComplete="new-password" required className="input" /></div>
-          <div><label className="label" htmlFor="pw2">Repeat password</label><input id="pw2" name="confirm" type="password" minLength={8} autoComplete="new-password" required className="input" /></div>
+          <div><label className="label" htmlFor="pw">Password (8+ characters)</label><PasswordInput id="pw" name="password" minLength={8} autoComplete="new-password" required /></div>
+          <div><label className="label" htmlFor="pw2">Repeat password</label><PasswordInput id="pw2" name="confirm" minLength={8} autoComplete="new-password" required /></div>
         </div>
       </fieldset>
 
