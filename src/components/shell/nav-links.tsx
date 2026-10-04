@@ -23,6 +23,7 @@ export function NavLinks({ items, onNavigate }: { items: Item[]; onNavigate?: ()
                   <Link
                     href={i.href}
                     onClick={onNavigate}
+                    data-tour={`nav-${base}`}
                     aria-current={active ? "page" : undefined}
                     className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-white text-brand-800 shadow-md" : "text-brand-100/80 hover:bg-white/10 hover:text-white"}`}
                   >

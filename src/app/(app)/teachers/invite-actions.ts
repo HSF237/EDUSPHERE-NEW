@@ -7,6 +7,8 @@ import { DAY, joinPath, newToken } from "@/lib/invites";
 export async function createTeacherInvite(): Promise<{ error?: string; path?: string }> {
   const ctx = await getCtx();
   if (!can(ctx, "TEACHERS")) return { error: "You don’t have permission to invite teachers." };
+  const [classCount, subjectCount] = await Promise.all([db.class.count({ where: { schoolId: ctx.schoolId } }), db.subject.count({ where: { schoolId: ctx.schoolId } })]);
+  if (classCount === 0 || subjectCount === 0) return { error: `Before inviting teachers, add your ${classCount === 0 ? "classes" : ""}${classCount === 0 && subjectCount === 0 ? " and " : ""}${subjectCount === 0 ? "subjects" : ""} under Classes & subjects. Teachers choose their class and subject from those when they sign up.` };
   const open = await db.invite.count({ where: { schoolId: ctx.schoolId, kind: "TEACHER", revokedAt: null, uses: 0, expiresAt: { gt: new Date() } } });
   if (open >= 100) return { error: "You already have 100 unused invite links. Cancel some first." };
   const inv = await db.invite.create({ data: { token: newToken(), kind: "TEACHER", schoolId: ctx.schoolId, createdById: ctx.user.id, maxUses: 1, expiresAt: new Date(Date.now() + 7 * DAY) } });
