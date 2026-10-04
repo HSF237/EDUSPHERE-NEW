@@ -10,9 +10,14 @@ self.addEventListener("fetch", (e) => {
 });
 self.addEventListener("push", (e) => {
   e.waitUntil((async () => {
-    let n = { title: "EduSphere", body: "You have a new update.", link: "/notifications" };
-    try { const r = await fetch("/api/push/latest", { credentials: "same-origin" }); if (r.ok) n = await r.json(); } catch (_) {}
-    await self.registration.showNotification(n.title, { body: n.body || "", icon: "/pwa-icon/192", badge: "/pwa-icon/192", data: { link: n.link || "/notifications" } });
+    let n = null;
+    try { if (e.data) n = e.data.json(); } catch (_) {}
+    if (!n) {
+      // Older subscriptions: the push carries no text, so ask the server for the latest one.
+      n = { title: "EduSphere", body: "You have a new update.", link: "/notifications" };
+      try { const r = await fetch("/api/push/latest", { credentials: "same-origin" }); if (r.ok) n = await r.json(); } catch (_) {}
+    }
+    await self.registration.showNotification(n.title || "EduSphere", { body: n.body || "", icon: "/pwa-icon/192", badge: "/pwa-icon/192", tag: n.tag || undefined, renotify: !!n.tag, data: { link: n.link || "/notifications" } });
   })());
 });
 self.addEventListener("notificationclick", (e) => {

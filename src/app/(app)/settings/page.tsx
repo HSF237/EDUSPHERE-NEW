@@ -7,6 +7,7 @@ import { BrandingForm } from "./branding-form";
 import { PushToggle } from "@/components/push-toggle";
 import { LangSwitch } from "@/components/lang-switch";
 import { getLang } from "@/lib/i18n";
+import { NotifPrefsCard } from "./notif-card";
 
 export const metadata = { title: "Settings" };
 
@@ -35,6 +36,7 @@ export default async function Settings() {
         )}
         <Card title="Language"><p className="mb-3 text-sm text-slate-600">Choose English, മലയാളം or हिन्दी for menus and headings on this device.</p><LangSwitch current={lang} /></Card>
         <Card title="Phone notifications">{vapid ? <PushToggle publicKey={vapid} /> : <p className="text-sm text-slate-500">Phone notifications are not switched on for this school yet. You can still install EduSphere on your home screen from your browser menu.</p>}</Card>
+        <NotifPrefsCard userId={user.id} />
         <Card title="Change password"><PasswordForm action={changePassword} /></Card>
       </div>
     </>
