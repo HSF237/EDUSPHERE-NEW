@@ -64,13 +64,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen lg:flex">
       {vars && <style dangerouslySetInnerHTML={{ __html: `:root{${vars}}` }} />}
       <aside className="relative hidden w-72 shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-brand-950 via-brand-900 to-brand-950 p-4 text-white lg:sticky lg:top-0 lg:flex lg:h-screen">
-        <div className="pointer-events-none absolute -left-20 top-40 h-56 w-56 rounded-full bg-brand-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 top-40 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,70,229,.28),transparent_70%)]" />
         <div className="relative mb-7 mt-1"><Brand school={school} logo={logo} /></div>
         <div className="relative flex-1"><NavLinks items={items} /></div>
         <div className="relative">{userCard}</div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200/70 bg-[#f5f6fc]/85 px-4 py-3 backdrop-blur sm:px-8">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200/70 bg-[#f5f6fc] px-4 py-3 sm:px-8">
           <div className="flex items-center gap-2 lg:hidden">
             <MobileMenu>
               <div className="mb-6"><Brand school={school} logo={logo} /></div>

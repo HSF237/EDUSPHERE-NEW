@@ -7,6 +7,7 @@ import { Card, PageHeader, Table, Badge } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
 import { LinkMaker } from "@/components/link-maker";
 import { createResetLink } from "../teachers/invite-actions";
+import { PasswordInput } from "@/components/password-input";
 
 export const metadata = { title: "Schools" };
 
@@ -50,7 +51,7 @@ export default async function Schools({ searchParams }: { searchParams: Promise<
       <PageHeader title="Schools" sub="Onboard a school and its first principal account. Each school’s data is fully separate." />
       <Card title="Onboard a school" className="mb-6">{sp.error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{sp.error}</p>}{sp.ok && <p role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">School created. Share the principal login with them.</p>}<form action={createSchool} autoComplete="off" className="grid gap-4 sm:grid-cols-3">
         <div><label className="label" htmlFor="n">School name</label><input id="n" name="name" className="input" required /></div><div><label className="label" htmlFor="c">Code</label><input id="c" name="code" className="input" required placeholder="GREEN" /></div><div><label className="label" htmlFor="a">Address</label><input id="a" name="address" className="input" /></div>
-        <div><label className="label" htmlFor="an">Principal name</label><input id="an" name="adminName" className="input" required /></div><div><label className="label" htmlFor="ae">Principal email</label><input id="ae" name="adminEmail" type="email" autoComplete="off" className="input" required /></div><div><label className="label" htmlFor="ap">Initial password (8+)</label><input id="ap" name="password" type="password" autoComplete="new-password" minLength={8} className="input" required /></div>
+        <div><label className="label" htmlFor="an">Principal name</label><input id="an" name="adminName" className="input" required /></div><div><label className="label" htmlFor="ae">Principal email</label><input id="ae" name="adminEmail" type="email" autoComplete="off" className="input" required /></div><div><label className="label" htmlFor="ap">Initial password (8+)</label><PasswordInput id="ap" name="password" autoComplete="new-password" minLength={8} required /></div>
         <div className="sm:col-span-3 text-right"><button className="btn">Create school</button></div></form></Card>
       <Card flush><Table head={["School", "Code", "Students", "Teachers", "Users", "Created", "Status", ""]}>{list.map((s) => (
         <tr key={s.id}><td className="td font-medium">{s.name}</td><td className="td">{s.code}</td><td className="td">{s._count.students}</td><td className="td">{s._count.teachers}</td><td className="td">{s._count.users}</td><td className="td">{fmtDate(s.createdAt)}</td><td className="td"><Badge tone={s.active ? "green" : "red"}>{s.active ? "Active" : "Disabled"}</Badge></td>
