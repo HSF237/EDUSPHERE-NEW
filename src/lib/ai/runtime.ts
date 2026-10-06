@@ -6,6 +6,7 @@ import { AgentError, exactAbsence, exactClass, exactClasses, exactDate, exactTea
 import { isFree, planCoverage, type PlanningData, type Assignment } from "./planner";
 import { TOOLS, toolByName, validateCall, type Tool } from "./tools";
 import type { Approval, FunctionCall } from "./provider";
+import { applySchoolPlan, buildSchoolPlan, schoolSnapshot, searchSchoolRecords } from "./school";
 
 type Tx = Prisma.TransactionClient;
 export type Actor = Pick<Ctx,"role"|"schoolId"|"classIds"|"childIds"|"teacherId"|"perms"|"support"> & {user:{id:string;mustChangePassword:boolean};timezone:string;readOnly:boolean};
@@ -26,7 +27,7 @@ export function declarations(actor:Actor) {
 }
 async function retryTransaction<T>(fn:(tx:Tx)=>Promise<T>):Promise<T> {
   for (let n=0;n<3;n++) {
-    try {return await db.$transaction(fn,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:10000});}
+    try {return await db.$transaction(fn,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});}
     catch (e) {if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code!=="P2034" || n===2) throw e;}
   }
   throw new AgentError("Data changed concurrently. Please try again.");
@@ -118,6 +119,16 @@ export async function dispatch(actor:Actor,request:string,call:FunctionCall):Pro
   return retryTransaction(async tx=>{
     const current=await fresh(tx,actor,!tool.readOnly);
     if (!mayUse(current,tool)) throw new AgentError("You do not have permission for that action.");
+    if(call.name==="search_school_records") {
+      const data=await searchSchoolRecords(tx,current,args);
+      await audit(tx,current,"READ",call.name,{resource:args.resource,resultHash:hash(data)});
+      return {data};
+    }
+    if(call.name==="prepare_school_actions") {
+      const snapshot=await schoolSnapshot(tx,current.schoolId);
+      const plan=buildSchoolPlan(snapshot,args,current);
+      return prepare(tx,current,call.name,JSON.parse(JSON.stringify(plan)) as Prisma.InputJsonObject,hash(snapshot));
+    }
     if (call.name==="create_classes") {
       const codes=args.class_codes as string[];
       exactClasses(request,codes);
@@ -202,9 +213,16 @@ export async function confirmProposal(actor:Actor,id:string,fingerprint:string) 
       await tx.substitute.createMany({data:plan.assignments.map(a=>({schoolId:current.schoolId,slotId:a.slotId,date:utcDay(day),absentTeacherId:absent,subTeacherId:a.subTeacherId,reason:"Principal-approved EduSphere Copilot plan"}))});
       // Notification delivery is a separate opt-in workflow, never silently sent here.
       result={kind:"executed",assignedPeriods:plan.assignments.length,date:day,notificationsSent:false};
+    } else if(p.tool==="prepare_school_actions") {
+      const snapshot=await schoolSnapshot(tx,current.schoolId);
+      if(hash(snapshot)!==p.snapshotHash)throw new AgentError("School records changed after this preview. Prepare a new preview before approving.");
+      const plan=buildSchoolPlan(snapshot,{summary:payload.summary,actions:payload.actions},current);
+      if(hash(plan)!==hash(p.payload))throw new AgentError("The planned changes no longer match this approval. Prepare a new preview.");
+      result=await applySchoolPlan(tx,current,plan);
     } else throw new AgentError("This action cannot be confirmed.");
     await tx.aiProposal.update({where:{id:p.id},data:{status:"EXECUTED",executedAt:new Date(),result}});
-    await audit(tx,current,"EXECUTED",p.id,{tool:p.tool,fingerprint:p.fingerprint,result});
+    // Private invitation/reset URLs belong only in the principal's action result, never audit logs.
+    await audit(tx,current,"EXECUTED",p.id,{tool:p.tool,fingerprint:p.fingerprint,result:p.tool==="prepare_school_actions"?{kind:"executed",completedActions:result.completedActions}:result});
     return result;
   });
 }

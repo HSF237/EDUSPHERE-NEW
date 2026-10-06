@@ -101,6 +101,7 @@ model School {
   aiUsage         AiUsage[]
   availability    TeacherAvailability[]
   timezone        String    @default("Asia/Kolkata")
+  meetings        SchoolMeeting[]
   brandColor      String?
   logoFileId      String?
   signatureFileId String?
@@ -550,6 +551,23 @@ model PtmEvent {
   school School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   slots  PtmSlot[]
 
+  @@index([schoolId, date])
+}
+
+model SchoolMeeting {
+  id          String   @id @default(cuid())
+  schoolId    String
+  title       String
+  agenda      String
+  date        DateTime @db.Date
+  startTime   String
+  endTime     String
+  venue       String?
+  classIds    String[]
+  teacherIds  String[]
+  createdById String
+  createdAt   DateTime @default(now())
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   @@index([schoolId, date])
 }
 

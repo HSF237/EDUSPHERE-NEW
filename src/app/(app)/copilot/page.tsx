@@ -10,6 +10,7 @@ import { copilotActor } from "./actions";
 import { CopilotChat } from "./chat";
 export const metadata={title:"EduSphere Copilot"};
 export const dynamic="force-dynamic";
+export const maxDuration=300;
 export default async function CopilotPage() {
   const ctx=await getCtx({allowLocked:true});
   if (ctx.role==="SUPER_ADMIN" || !ctx.schoolId || ctx.support || !ctx.user.school?.active) redirect("/dashboard");

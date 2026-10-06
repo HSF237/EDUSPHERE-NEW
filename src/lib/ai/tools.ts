@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { classCode, AgentError } from "./policy";
+import { batchSchema, searchSchema, jsonSchema } from "./operations";
 export type Capability = "CLASSES" | "SUBSTITUTES" | "REPORTS" | "STAFF" | "SCOPED";
 export type Tool = { name: string; description: string; schema: z.ZodTypeAny; parameters: Record<string,unknown>; allowedRoles: string[]; capability: Capability; readOnly: boolean; requiresConfirmation: boolean; riskLevel: "low"|"medium"|"high"; audit: boolean; enabled: boolean };
 const text = { type:"string" };
@@ -18,6 +19,8 @@ export const TOOLS: Tool[] = [
   define("get_teacher_timetable","Read a named teacher’s timetable. Staff with substitute permission can query school staff; ordinary teachers can query only themselves.",z.object({teacher_name:string,date:string}).strict(),{teacher_name:teacher,date},"SUBSTITUTES"),
   define("get_available_teachers","Read free, available teachers for an explicit period/date. Planning still checks subject qualification and workload limits.",z.object({period:z.number().int().min(1).max(20),date:string}).strict(),{period:{type:"integer",minimum:1,maximum:20},date},"SUBSTITUTES"),
 ];
+TOOLS.push({name:"search_school_records",description:"Principal-only lookup of existing school records and IDs across school modules. Use resource classes with grade 9 for Class IX. Empty query returns records; class_id and grade may be null; offset starts at 0. Search before selecting targets. Never guess IDs.",schema:searchSchema,parameters:jsonSchema(searchSchema),allowedRoles:["ADMIN"],capability:"STAFF",readOnly:true,requiresConfirmation:false,riskLevel:"low",audit:true,enabled:true});
+TOOLS.push({name:"prepare_school_actions",description:"Prepare 1–10 fully specified school actions as one atomic principal approval preview. Supports staff and parent meetings, announcements, messages, homework, diary, portions, timetable, exams, marks, attendance, leave, fees, students, teacher permissions, invitations, and branding. Read existing records first. All fields are required; use null only for optional nullable values. Ask for missing dates, times, audience, factual student details, amounts or marks; never invent them. You may draft agenda/homework/announcement text when asked. This function never executes school changes.",schema:batchSchema,parameters:jsonSchema(batchSchema),allowedRoles:["ADMIN"],capability:"CLASSES",readOnly:false,requiresConfirmation:true,riskLevel:"high",audit:true,enabled:true});
 // Full roadmap catalog: declarations stay disabled until validated backend handlers exist.
 const future: [string,Record<string,unknown>,Capability,boolean][] = [
   ["create_class",{grade:{type:"integer"},section:text,academic_year:text},"CLASSES",false],

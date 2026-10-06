@@ -5,6 +5,7 @@ import { planCoverage, isFree, type PlanningData, type Slot } from "../src/lib/a
 import { GeminiProvider, runAgent, type ModelProvider, type ProviderTurn } from "../src/lib/ai/provider";
 import { assertActor, declarations, mayUse, type Actor } from "../src/lib/ai/runtime";
 import { toolByName, validateCall } from "../src/lib/ai/tools";
+import { calendarDate } from "../src/lib/ai/operations";
 const now=new Date("2026-10-06T20:00:00Z");
 test("dates use school timezone across UTC midnight",()=>{
   assert.equal(exactDate("attendance today","today","Asia/Kolkata",now),"2026-10-07");
@@ -123,7 +124,7 @@ test("agent enforces bounded rounds",async()=>{
   let rounds=0;
   const provider:ModelProvider={generate:async()=>{rounds++;return turn([{id:`c${rounds}`,name:"get_school_status",arguments:{date:"today"}}]);}};
   await assert.rejects(()=>runAgent(provider,"today",[],[{name:"get_school_status"}],async()=>({data:{}}),"ADMIN"),AgentError);
-  assert.equal(rounds,4);
+  assert.equal(rounds,6);
 });
 test("Gemini transport sends key in server header and opts out of stored interactions",async()=>{
   let payload:Record<string,unknown>={};
@@ -136,7 +137,7 @@ test("Gemini transport sends key in server header and opts out of stored interac
   };
   const result=await new GeminiProvider("test-secret","test-model",transport).generate([],"system",[]);
   assert.equal(result.text,"Hello");assert.equal(payload.store,false);
-  assert.equal((payload.generation_config as Record<string,unknown>).max_output_tokens,2048);
+  assert.equal((payload.generation_config as Record<string,unknown>).max_output_tokens,8192);
 });
 test("Gemini errors never echo upstream credentials/content",async()=>{
   let requests=0; const logs:string[]=[];
@@ -175,4 +176,13 @@ test("Gemini rejects malformed calls and duplicate IDs",async()=>{
 });
 
 test("stable hashes survive PostgreSQL JSON key reordering",()=>{assert.equal(hash({b:2,a:{d:4,c:3}}),hash({a:{c:3,d:4},b:2}));});
+test("school action schemas reject invented controls, tenant overrides and invalid calendar dates",()=>{
+  const wrap=(actions:unknown[])=>({summary:"Requested changes",actions});
+  assert.throws(()=>validateCall("prepare_school_actions",wrap([{action:"execute_sql",sql:"DELETE FROM School"}])),AgentError);
+  assert.throws(()=>validateCall("prepare_school_actions",wrap([{action:"create_subject",name:"Science",code:"SCI",schoolId:"foreign"}])),AgentError);
+  assert.throws(()=>validateCall("prepare_school_actions",wrap([])),AgentError);
+  assert.throws(()=>validateCall("prepare_school_actions",wrap(Array.from({length:11},(_,i)=>({action:"create_subject",name:`Science ${i}`,code:`S${i}`})))),AgentError);
+  assert.equal(calendarDate.safeParse("2026-02-30").success,false);assert.equal(calendarDate.safeParse("2028-02-29").success,true);
+  for(const role of ["TEACHER","PARENT"] as const)assert.ok(!declarations(actor(role)).some(t=>t.name==="prepare_school_actions"||t.name==="search_school_records"));
+});
 test("substitution planning cannot mark the wrong or non-absent teacher",()=>{exactAbsence("Mrs. Fathima is absent tomorrow","Mrs. Fathima");assert.throws(()=>exactAbsence("Mrs. Fathima is not absent tomorrow","Mrs. Fathima"),AgentError);assert.throws(()=>exactAbsence("Mrs. Fathima is absent tomorrow; Mr. Sameer is available","Mr. Sameer"),AgentError);});

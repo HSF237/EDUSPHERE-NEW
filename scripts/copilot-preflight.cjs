@@ -40,7 +40,9 @@ function verifyExistingSchema() {
     applied.add(row.migration_name);
   }
   const pending = [...expected.keys()].filter(n => !applied.has(n));
-  const baselinePending = pending.filter(n => n !== current);
+  // Only migrations older than the initial Copilot rollout belong to the verified historical baseline.
+  // New feature migrations must be applied normally, never marked as already applied.
+  const baselinePending = pending.filter(n => n < current);
   console.log("ROLLOUT_MIGRATIONS " + JSON.stringify({ applied: applied.size, pending }));
   if (baselinePending.length) {
     if (!allowBaseline) throw new Error(found[0]?.name ? "UNEXPECTED_PENDING_MIGRATIONS" : "MIGRATION_HISTORY_MISSING");

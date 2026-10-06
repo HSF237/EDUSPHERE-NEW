@@ -7,7 +7,7 @@ import * as crypto from "node:crypto";
 const source = fs.readFileSync("scripts/copilot-preflight.cjs", "utf8");
 const names = fs.readdirSync("prisma/migrations", { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
 const current = "20261012000000_gemini_copilot";
-const rows = names.filter(n => n !== current).map(n => ({ migration_name: n,
+const rows = names.filter(n => n < current).map(n => ({ migration_name: n,
   checksum: crypto.createHash("sha256").update(fs.readFileSync(`prisma/migrations/${n}/migration.sql`)).digest("hex"),
   finished_at: new Date(), rolled_back_at: null }));
 
@@ -71,7 +71,7 @@ test("verified baseline records only historical migrations after both schema che
   const result = await run({ allow: true });
   assert.equal(result.code, 0);
   assert.deepEqual(result.events.slice(0, 3), ["diff", "gemini", "diff"]);
-  assert.deepEqual(result.events.slice(3), names.filter(n => n !== current).sort().map(n => `resolve:${n}`));
+  assert.deepEqual(result.events.slice(3), names.filter(n => n < current).sort().map(n => `resolve:${n}`));
   assert.ok(!result.events.includes(`resolve:${current}`));
 });
 
@@ -95,6 +95,7 @@ test("HTTP 503 requires explicit rollout allowance and never claims successful v
   const allowed = await run({ allow: true, httpStatus: 503, allow503: true });
   assert.equal(allowed.code, 0);
   assert.equal(allowed.events.filter(e => e.startsWith("resolve:")).length, rows.length);
+  assert.ok(!allowed.events.some(e=>e.includes("20261013000000_school_meetings")));
   assert.match(allowed.logs.join("\n"), /verification_pending/);
   assert.doesNotMatch(allowed.logs.join("\n"), /ROLLOUT_GEMINI_OK/);
 });

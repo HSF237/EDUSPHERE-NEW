@@ -49,19 +49,27 @@ For writes, the user clicks the approval card. A separate authenticated server a
 | `get_class_timetable` | Implemented | Authorized class schedule with approved date-specific substitutions |
 | `get_teacher_timetable` | Implemented | Named teacher schedule; ordinary teachers can read only their own |
 | `get_available_teachers` | Implemented | Free and available staff for an explicit period/date |
-| `create_class`, `update_class`, `archive_class` | Catalog only | Class management services; single-class creation currently uses `create_classes` with one entry |
-| `get_attendance_summary` | Catalog only | Filtered attendance analysis |
-| `assign_substitute` | Catalog only | Direct model assignment stays unavailable; confirmation uses the stored plan |
-| `assign_class_teacher`, `assign_subject_teacher` | Catalog only | Teacher assignment previews |
-| `move_class_period` | Catalog only | Timetable change preview |
-| `create_homework_draft`, `publish_homework` | Catalog only | Separate content draft and approved publication |
-| `generate_class_report`, `generate_student_report` | Catalog only | Scoped reporting |
-| `create_announcement_draft`, `publish_announcement` | Catalog only | Separate draft and approved publication |
-| `create_teacher_account`, `create_student_account` | Catalog only | Account provisioning; invite services, never password disclosure |
-| `get_student_performance`, `get_class_performance` | Catalog only | Performance queries with object-level scope |
-| `calculator` | Catalog only | Bounded arithmetic service |
+| `search_school_records` | Implemented | Principal-only paginated lookup across school modules; secrets excluded |
+| `prepare_school_actions` | Implemented | 39 typed operations, 1–10 actions in an atomic principal approval batch |
 
-General Gemini responses can help draft educational content, but they do not publish homework or announcements. Disabled tools are not exposed or executed. Add each future handler, scope validation and tests before enabling its declaration.
+The expanded catalog supports:
+
+- Subjects, class rooms and class teachers; subject teacher assignments; teacher permissions, account activity and workload limits.
+- Student creation and updates; links to existing parent accounts; teacher/parent signup invitations, teacher/parent reset links and invitation revocation. Secret links are returned only to the approving principal, never to Gemini or audit logs.
+- Staff meetings for selected classes or teachers, with explicit date, local start/end time, venue and agenda; cancellation; parent meeting days with explicit slot times and cancellation.
+- Announcements with exact audience and content, deletion; messages from the principal to an active school teacher or parent. All communication effects appear in the approval preview.
+- Homework publication, closure and submission status; diary entries; discussed portions and removal.
+- Timetable creation/updates and removal, with subject assignments, overlap and workload checks. Slots with substitute history cannot be changed through this tool.
+- Exams, subject schedules, marks, publication/unpublication; explicit complete attendance registers and attendance review; pending student leave decisions.
+- Fee charges, removal of unused charges, payment/waiver recording and receipts; school brand color and signatory details.
+
+Copilot can look up records, compare options and draft requested text without requiring approval for each read. It stops before operational changes. Changes need the separate principal approval button. New records that later actions need to reference require a completed first approval before a subsequent plan can discover their IDs. Other dependencies are simulated in memory when preparing a batch, then checked again during atomic execution.
+
+Staff meetings appear at `/meetings` for the principal and selected teachers. The planner checks timetable intervals, recorded absence/blocks, substitute assignments, existing staff meetings and parent meeting slots. It creates only in-app notifications after approval, not external messages. It has no background scheduler: an unapproved plan never executes later on its own.
+
+File uploads, browser push consent, subscription checkout, bank charges, platform-owner controls and external WhatsApp/SMS/email delivery continue through their dedicated interfaces. Copilot does not read API keys, passwords or conversations the principal does not participate in. It does not automatically buy subscriptions or infer attendance, marks, payment amounts, identities, meeting times or access permissions.
+
+Record search returns at most 50 rows per page. To keep transactions bounded, this planner currently requires at most 2,000 records in each loaded operational collection; larger schools should use the module forms until targeted planner snapshots are implemented. A changed school snapshot invalidates a pending batch rather than approving stale data.
 
 ## Permissions
 
@@ -69,7 +77,7 @@ The database's `ADMIN` role represents the school principal/admin. `SUPER_ADMIN`
 
 | Account | Available scope |
 | --- | --- |
-| Principal (`ADMIN`) | School-scoped reads, class previews, substitution previews, confirmation and manual teacher availability |
+| Principal (`ADMIN`) | School-scoped module lookup, 39 operation previews, class/substitution planning, confirmation and manual teacher availability |
 | Teacher | Selected authorized workspace attendance/timetable; own teacher timetable |
 | Teacher + `REPORTS` | School status reads in addition to ordinary teacher scope |
 | Teacher + `SUBSTITUTES` | School teacher timetable and availability reads |
@@ -118,7 +126,7 @@ Existing exam schedules do not identify teacher invigilation duties, and existin
 
 “Give me today's school status” queries actual approved attendance, known teacher absences, uncovered timetable periods and pending AI approvals. Missing/unapproved registers remain missing. The response states unavailable metrics rather than inventing complaints or homework approvals.
 
-A more involved request can perform several permitted reads. The agent permits at most four Gemini turns and eight tool calls per chat request, validates the returned tool batch before dispatch, and stops immediately when it prepares an approval card. The first release supports one action preview per chat request. After execution, submit a fresh request to get updated school status.
+A more involved request can perform several permitted reads. The agent permits at most six Gemini turns and eight tool calls per chat request, validates the returned tool batch before dispatch, and stops immediately when it prepares an approval card. A chat request can prepare a batch of up to ten school operations in one approval card; class creation and substitution planning retain their specialized previews. After execution, submit a fresh request to get updated school status.
 
 “Automatically arrange substitutes for tomorrow” without a named absent teacher needs clarification in this release. A future all-absent-teachers workflow should fetch recorded absences, plan all affected periods together and approve one atomic plan, rather than run independently competing plans.
 
@@ -126,7 +134,7 @@ A more involved request can perform several permitted reads. The agent permits a
 
 Validators intentionally accept a narrow syntax: explicit uppercase class divisions, exact teacher names, a supported absence statement, one ISO/relative date, digit period numbers and the current year. Missing, ambiguous or changed values request clarification. Gemini can explain in the user's language, but unsupported operation wording may need an explicit restatement.
 
-Conversation history is bounded and sent as text, never as authorization or executable tool calls from the browser. Exact operation values must occur in the **current** request; a follow-up containing only “four” cannot borrow unverified values from prior model text. `Edit command` cancels the old preview and prepares a new request. Verified multi-turn entity slots can be added later.
+Conversation history is bounded and sent as text, never as authorization or executable tool calls from the browser. Specialized class/substitution tools verify exact values against the current request. Batch actions can use user-provided details from bounded conversation history; Gemini is instructed to ask for missing facts. The principal must inspect the complete preview, and the backend validates schemas, tenant ownership, relationships and conflicts before applying it. The trusted context supplies the school-local current date. `Edit command` cancels the old preview and prepares a new request. The principal approval remains the authorization boundary for newly composed content and batch details.
 
 ## Audit and approval storage
 
@@ -146,7 +154,7 @@ For private endpoint diagnostics, run `node scripts/gemini-diagnostic.cjs` in a 
 
 A future provider can implement the same interface. It must produce registry names and normalized calls; it must not own authorization, approvals or database execution. This integration uses Gemini only and does not deploy or train Qwen.
 
-Persistent `AiUsage` counters limit requests per user and school per school-local day, including failures after a reserved request. Defaults are 20/user and 200/school, configurable with `AI_USER_DAILY_REQUESTS` and `AI_SCHOOL_DAILY_REQUESTS`. Each request has bounded message/history sizes, four model turns, eight tools, a 20-second timeout per model turn and 2,048 output tokens per turn. These are request guards, not an exact currency spending cap or substitute for provider quotas. There are no automatic retries of Gemini calls.
+Persistent `AiUsage` counters limit requests per user and school per school-local day, including failures after a reserved request. Defaults are 20/user and 200/school, configurable with `AI_USER_DAILY_REQUESTS` and `AI_SCHOOL_DAILY_REQUESTS`. Each request has bounded message/history sizes, six model turns, eight tools, a 20-second timeout per model turn and 8,192 output tokens per turn. These are request guards, not an exact currency spending cap or substitute for provider quotas. Transient HTTP 502/503/504 responses receive one bounded retry, sharing the same 20-second deadline.
 
 Only minimum permitted school data is returned to the model: aggregate attendance, relevant timetable information and teacher names. Confirm the API project's data-handling settings and the school's rollout policy before using actual records. `store:false` opts out of stored Interactions resources; it does not override Google's service-wide logging, retention or terms.
 

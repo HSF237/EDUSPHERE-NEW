@@ -25,6 +25,7 @@ export const NAV: NavItem[] = [
   { href: "/messages", label: "Messages", roles: school, icon: "message", group: "Connect" },
   { href: "/announcements", label: "Announcements", roles: school, icon: "megaphone", group: "Connect" },
   { href: "/ptm", label: "Parent meetings", roles: school, icon: "users", group: "Connect" },
+  { href: "/meetings", label: "Teacher meetings", roles: ["ADMIN","TEACHER"], icon: "users", group: "Connect" },
   { href: "/notifications", label: "Notifications", roles: school, icon: "bell", group: "Connect" },
   { href: "/students", label: "Students", roles: ["ADMIN", "TEACHER"], icon: "cap", group: "School", tMode: "CLASS", perm: "STUDENTS" },
   { href: "/teachers", label: "Teachers", roles: ["ADMIN"], icon: "teacher", group: "School", perm: "TEACHERS" },

@@ -23,19 +23,24 @@ export async function chatWithCopilot(input:unknown):Promise<AgentReply> {
     if (!parsed.success) throw new AgentError("Please enter a request under 4,000 characters.");
     if (!configured()) throw new AgentError("Gemini is not configured. Ask the site administrator to add GEMINI_API_KEY to the server environment.");
     await reserveBudget(actor);
-    return await runAgent(new GeminiProvider(),parsed.data.message,parsed.data.history,declarations(actor),call=>dispatch(actor,parsed.data.message,call),`Role: ${actor.role}. School timezone: ${actor.timezone}. Read-only account: ${actor.readOnly}. Validate exact values against the current user request.`);
+    const {localDay}=await import("@/lib/ai/policy");
+    return await runAgent(new GeminiProvider(),parsed.data.message,parsed.data.history,declarations(actor),call=>dispatch(actor,parsed.data.message,call),`Role: ${actor.role}. School timezone: ${actor.timezone}. Today's local date: ${localDay(new Date(),actor.timezone)}. Read-only account: ${actor.readOnly}. Validate exact values against the current user request.`);
   } catch (e) {
     await db.auditLog.create({data:{schoolId:actor.schoolId,userId:actor.user.id,action:"AI_REJECTED",entity:"Copilot",detail:JSON.stringify({reason:e instanceof AgentError?"policy_or_provider":"internal_error"})}}).catch(()=>{});
     return {text:"",error:e instanceof AgentError?e.message:"Copilot could not complete that request. No school actions were executed. Please try again."};
   }
 }
-export async function approveCopilot(input:unknown):Promise<{message?:string;error?:string}> {
+export async function approveCopilot(input:unknown):Promise<{message?:string;error?:string;links?:{label:string;path:string}[]}> {
   const actor=await copilotActor();
   try {
     const parsed=approvalSchema.safeParse(input);
     if (!parsed.success) throw new AgentError("Invalid approval.");
     const result=await confirmProposal(actor,parsed.data.id,parsed.data.fingerprint) as Record<string,unknown>;
-    for (const path of ["/copilot","/classes","/substitutes","/timetable","/dashboard"]) revalidatePath(path);
+    revalidatePath("/","layout");
+    if(result.kind==="executed"&&typeof result.completedActions==="number") {
+      const actions=result.actions as {message:string;path?:string}[];
+      return {message:String(result.message),links:actions.filter(a=>a.path&&/^\/(?:join\/(?:teacher|parent)|reset)\/[A-Za-z0-9_-]+$/.test(a.path)).map(a=>({label:a.message,path:a.path!}))};
+    }
     return {message:Array.isArray(result.createdClasses)?`Created ${result.createdClasses.join(", ")} for ${result.academicYear}.`:`Assigned ${result.assignedPeriods} substitute periods on ${result.date}. Teacher notifications were not sent.`};
   } catch (e) {return {error:e instanceof AgentError?e.message:"Could not confirm the action. Refresh the preview before retrying."};}
 }
