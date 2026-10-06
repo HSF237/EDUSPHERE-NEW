@@ -174,6 +174,15 @@ test("Gemini rejects malformed calls and duplicate IDs",async()=>{
   const provider=new GeminiProvider("test","test",async()=>new Response(JSON.stringify({steps:[{type:"function_call",id:"x",name:"get_school_status",arguments:{date:"today"}},{type:"function_call",id:"x",name:"get_school_status",arguments:{date:"today"}}]})));
   await assert.rejects(()=>provider.generate([],"",[]),AgentError);
 });
+test("Gemini does not dispatch calls from an incomplete response",async()=>{
+  let dispatched=0;
+  const provider=new GeminiProvider("secret","gemini-3.1-flash-lite",async(_url,init)=>{
+    assert.equal(JSON.parse(String(init?.body)).generation_config.thinking_level,"low");
+    return new Response(JSON.stringify({status:"incomplete",steps:[{type:"function_call",id:"x",name:"create_classes",arguments:{class_codes:["8A"],academic_year:"active"}}]}));
+  });
+  await assert.rejects(()=>runAgent(provider,"Create 8A",[],[{name:"create_classes"}],async()=>{dispatched++;return {};},"ADMIN"),AgentError);
+  assert.equal(dispatched,0);
+});
 
 test("stable hashes survive PostgreSQL JSON key reordering",()=>{assert.equal(hash({b:2,a:{d:4,c:3}}),hash({a:{c:3,d:4},b:2}));});
 test("school action schemas reject invented controls, tenant overrides and invalid calendar dates",()=>{

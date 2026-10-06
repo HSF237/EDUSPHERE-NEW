@@ -120,7 +120,7 @@ Teacher notifications are **off** for this first integration. No messages are se
 
 The principal's Copilot page includes a teacher availability form. It shows the proposed teacher/date and full-day absence or time block before the principal clicks **Confirm availability**. Exam duties and other unavailable periods can be entered there. Writes and removals are scoped and audited. Removing an absence with approved substitutions is blocked until those substitutions are explicitly resolved.
 
-Existing exam schedules do not identify teacher invigilation duties, and existing `LeaveRequest` rows concern students. The planner does not pretend to know duties or absences that were never entered. Populate availability before relying on automatic coverage. Workload limits are persistent teacher fields; defaults are visible in the form. A full workload-policy settings editor is a future addition.
+Existing exam schedules do not identify teacher invigilation duties, and existing `LeaveRequest` rows concern students. The planner does not pretend to know duties or absences that were never entered. Populate availability before relying on automatic coverage. Workload limits are persistent teacher fields; defaults are visible in the form. The principal can now change workload limits through an approved update_teacher_access operation.
 
 ## Principal workflows
 
@@ -148,7 +148,7 @@ Serializable transactions retry recognized Prisma serialization conflicts up to 
 
 `ModelProvider.generate` returns normalized calls, text and native steps. The Gemini implementation uses the REST Interactions API and `store:false`; it preserves all native steps inside a single request's tool loop, including thought signatures, and returns only user-facing text/previews to the client. It disables any automatic action execution by controlling dispatch itself. No third-party SDK or AI framework is required at runtime.
 
-Transient HTTP 502/503/504 responses receive one automatic retry within a shared 20-second deadline. The request and model remain identical, and backend tool dispatch happens only after a valid successful response. Authentication, configuration and quota errors are not retried. `COPILOT_GEMINI_HTTP` logs contain only HTTP status and attempt number. Persistent service failures show a service-unavailable message instead of suggesting that the model is unsupported. A retry cannot resolve a sustained Google outage.
+Transient HTTP 502/503/504 responses receive one automatic retry within a shared 20-second deadline. The request and model remain identical, and backend tool dispatch happens only after a valid successful response. Authentication, configuration and quota errors are not retried. `COPILOT_GEMINI_HTTP` logs contain only HTTP status and attempt number. Persistent service failures show a service-unavailable message instead of suggesting that the model is unsupported. A retry cannot resolve a sustained Google outage. Flash Lite uses the supported low thinking setting for response latency; incomplete upstream responses never dispatch calls.
 
 For private endpoint diagnostics, run `node scripts/gemini-diagnostic.cjs` in a build with the production environment. It uses a generic verification prompt and logs only status, validated error codes and candidate model availability. It deliberately exits unsuccessfully to prevent a diagnostic build from replacing the application. Never use it as the project's normal build command.
 
@@ -156,7 +156,7 @@ A future provider can implement the same interface. It must produce registry nam
 
 Persistent `AiUsage` counters limit requests per user and school per school-local day, including failures after a reserved request. Defaults are 20/user and 200/school, configurable with `AI_USER_DAILY_REQUESTS` and `AI_SCHOOL_DAILY_REQUESTS`. Each request has bounded message/history sizes, six model turns, eight tools, a 20-second timeout per model turn and 8,192 output tokens per turn. These are request guards, not an exact currency spending cap or substitute for provider quotas. Transient HTTP 502/503/504 responses receive one bounded retry, sharing the same 20-second deadline.
 
-Only minimum permitted school data is returned to the model: aggregate attendance, relevant timetable information and teacher names. Confirm the API project's data-handling settings and the school's rollout policy before using actual records. `store:false` opts out of stored Interactions resources; it does not override Google's service-wide logging, retention or terms.
+For principal tools, selected school records can include student names, attendance entries, marks, fees, teacher/parent contact details and conversations the principal participates in. Search returns only the requested resource and page, and never passwords, API keys, private invitation tokens, uploaded file bytes or unrelated conversations. Teacher and parent tools retain their narrower scopes. Confirm the API project's data-handling settings and the school's rollout policy before using actual records. `store:false` opts out of stored Interactions resources; it does not override Google's service-wide logging, retention or terms.
 
 ## Verification
 
@@ -174,3 +174,5 @@ A live Gemini request, authenticated browser interaction against a deployed data
 - Function calls and stateless history: https://ai.google.dev/gemini-api/docs/function-calling
 - Interactions REST fields: https://ai.google.dev/api/interactions-api
 - Key security: https://ai.google.dev/gemini-api/docs/api-key
+
+For a rollout whose class-preview, tool-continuation and expanded-meeting live checks already passed, GEMINI_VERIFY_ONLY=clarification runs only the remaining missing-details check. This is a one-time verification selection, not an outage bypass: failed requests still fail the build.

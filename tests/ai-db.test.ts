@@ -220,6 +220,9 @@ test("AI database workflows",async t=>{
       const f=await schoolFixture();
       await approve(f.actor,[{action:"post_announcement",title:"Class notice",body:"Bring science notebooks",audience:"CLASS",class_id:f.c.id,pinned:true},{action:"send_message",user_id:f.u.id,body:"Please review the class plan."}]);
       assert.equal(await client.announcement.count({where:{schoolId:f.school.id,classId:f.c.id}}),1);assert.equal(await client.message.count({where:{senderId:f.user.id}}),1);
+      const {announcementScope}=await import("../src/lib/announcements-scope");
+      assert.equal(await client.announcement.count({where:announcementScope({schoolId:f.school.id,role:"PARENT",classIds:[f.c.id]})}),1);
+      assert.equal(await client.announcement.count({where:announcementScope({schoolId:f.school.id,role:"PARENT",classIds:[]})}),0);
       const hw={action:"create_homework",class_id:f.c.id,subject_id:f.subject.id,title:"Fractions practice",description:"Complete exercises 1–5",due_date:f.future};
       await approve(f.actor,[hw]);const homework=await client.homework.findFirstOrThrow({where:{schoolId:f.school.id}});assert.equal(homework.teacherId,f.teacher.id);assert.equal(await client.homeworkSubmission.count({where:{homeworkId:homework.id}}),1);
       await approve(f.actor,[{action:"set_homework_submission",homework_id:homework.id,student_id:f.student.id,done:true}]);assert.equal((await client.homeworkSubmission.findFirstOrThrow({where:{homeworkId:homework.id}})).done,true);

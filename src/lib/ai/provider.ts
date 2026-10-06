@@ -12,7 +12,7 @@ export class GeminiProvider implements ModelProvider {
     if (!this.apiKey.trim()) throw new AgentError("Gemini is not configured. Ask the site administrator to set GEMINI_API_KEY on the server.");
     let response:Response | undefined;
     const signal=AbortSignal.timeout(20000); // One deadline across both attempts and their response bodies.
-    const body=JSON.stringify({model:this.model,system_instruction:system,input,tools,store:false,generation_config:{max_output_tokens:8192}});
+    const body=JSON.stringify({model:this.model,system_instruction:system,input,tools,store:false,generation_config:{max_output_tokens:8192,...(this.model==="gemini-3.1-flash-lite"?{thinking_level:"low"}:{})}});
     try {
       for (let attempt=1;attempt<=2;attempt++) {
         response = await this.transport("https://generativelanguage.googleapis.com/v1/interactions",{
@@ -43,6 +43,7 @@ export class GeminiProvider implements ModelProvider {
     if (responseBody.length>1000000) throw new AgentError("Gemini returned an oversized response.");
     let value:Record<string,unknown>;
     try { value=JSON.parse(responseBody); } catch {throw new AgentError("Gemini returned an invalid response.");}
+    if (["incomplete","failed","cancelled","in_progress"].includes(String(value?.status))) throw new AgentError("Gemini did not complete its response. Please use a smaller request and try again. No school actions were executed.");
     if (!value || typeof value!=="object" || !Array.isArray(value.steps) || value.steps.some(s=>!s || typeof s!=="object")) throw new AgentError("Gemini returned an invalid interaction.");
     const steps=value.steps as Record<string,unknown>[];
     const calls:FunctionCall[]=[];

@@ -4,13 +4,13 @@ import { Card, PageHeader, Badge, Empty } from "@/components/ui";
 import { fmtDate } from "@/lib/utils";
 import { AnnForm } from "./form";
 import { deleteAnnouncement } from "./actions";
+import { announcementScope } from "@/lib/announcements-scope";
 
 export const metadata = { title: "Announcements" };
 
 export default async function Announcements() {
   const ctx = await getCtx();
-  const aud = ctx.role === "ADMIN" ? undefined : { in: ctx.role === "TEACHER" ? (["ALL", "TEACHERS"] as const).slice() : (["ALL", "PARENTS"] as const).slice() };
-  const list = await db.announcement.findMany({ where: { schoolId: ctx.schoolId, ...(aud ? { audience: aud } : {}) }, orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 50 });
+  const list = await db.announcement.findMany({ where: announcementScope(ctx), orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 50 });
   const authors = await db.user.findMany({ where: { id: { in: list.map((a) => a.authorId) } }, select: { id: true, name: true } });
   const an = new Map(authors.map((a) => [a.id, a.name]));
   return (

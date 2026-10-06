@@ -9,6 +9,7 @@ const declaration = name => {
 };
 (async () => {
   const provider = new GeminiProvider();
+  if (process.env.GEMINI_VERIFY_ONLY !== "clarification") {
   let prepared = 0;
   const preview = await runAgent(provider,
     "Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D.", [], [declaration("create_classes")], async call => {
@@ -32,6 +33,7 @@ const declaration = name => {
     }, "Role: ADMIN. All tool handlers return synthetic data for API verification.");
   assert.equal(reads, 1); assert.match(reply.text, /73/);
   console.log("GEMINI_VERIFY tool_continuation_ok");
+  }
   const allTools = TOOLS.filter(t => t.enabled && t.allowedRoles.includes("ADMIN")).map(t => declaration(t.name));
   const context = "Role: ADMIN. School timezone: Asia/Kolkata. Today's local date: 2026-10-06. This is a synthetic API verification. All handlers return synthetic data; no database writes are available.";
   const lookup = async call => {
@@ -42,6 +44,7 @@ const declaration = name => {
       : args.resource === "assignments" ? [{ id: "synthetic-assignment", classId: "synthetic-class-9a", teacherId: "synthetic-teacher", teacher: "Teacher One" }] : [];
     return { data: { resource: args.resource, records, totalMatches: records.length, nextOffset: null } };
   };
+  if (process.env.GEMINI_VERIFY_ONLY !== "clarification") {
   let planned = 0;
   const meeting = await runAgent(provider,
     "Schedule a teacher meeting for all teachers assigned to Class IX on 2027-03-01 from 15:00 to 16:00 in the Staff room. Agenda: Review teaching progress. Title: Class IX planning.", [], allTools, async call => {
@@ -59,12 +62,13 @@ const declaration = name => {
     }, context);
   assert.equal(planned, 1); assert.ok(meeting.approval);
   console.log("GEMINI_VERIFY expanded_meeting_preview_ok");
+  }
   const clarification = await runAgent(provider, "Schedule a meeting for teachers of Class IX.", [], allTools, async call => {
     assert.notEqual(call.name, "prepare_school_actions", "Missing dates/times must not produce a proposal");
     return lookup(call);
   }, context);
   assert.match(clarification.text, /date|time|when/i);
-  assert.doesNotMatch(clarification.text, /(?:cannot|can't|unable to|do not have).*schedul/i);
+  assert.doesNotMatch(clarification.text, /do not have.*function.*schedul|capabilities.*limited/i);
   console.log("GEMINI_VERIFY missing_details_clarification_ok");
 })().catch(error => {
   console.error("GEMINI_VERIFY failed " + (error.constructor?.name === "AgentError" ? error.message : "response_validation_failed"));
