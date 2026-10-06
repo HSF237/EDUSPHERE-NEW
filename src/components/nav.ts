@@ -12,6 +12,7 @@ const all: Role[] = ["ADMIN", "TEACHER", "PARENT", "SUPER_ADMIN"];
 const school: Role[] = ["ADMIN", "TEACHER", "PARENT"];
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: all, icon: "home", group: "Overview" },
+  { href: "/copilot", label: "AI Copilot", roles: school, icon: "bolt", group: "Overview" },
   { href: "/schools", label: "Schools", roles: ["SUPER_ADMIN"], icon: "building", group: "Overview" },
   { href: "/attendance", label: "Attendance", roles: school, icon: "attendance", group: "Daily", tMode: "CLASS", perm: "ATTENDANCE_APPROVE" },
   { href: "/homework", label: "Homework", roles: school, icon: "book", group: "Daily" },

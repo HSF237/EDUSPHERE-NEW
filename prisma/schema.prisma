@@ -97,6 +97,10 @@ model School {
   feeItems      FeeItem[]
   feePayments   FeePayment[]
   alerts        AlertLog[]
+  aiProposals     AiProposal[]
+  aiUsage         AiUsage[]
+  availability    TeacherAvailability[]
+  timezone        String    @default("Asia/Kolkata")
   brandColor      String?
   logoFileId      String?
   signatureFileId String?
@@ -207,8 +211,12 @@ model Teacher {
   subs        Substitute[]    @relation("SubTeacher")
   absent      Substitute[]    @relation("AbsentTeacher")
   ptmSlots    PtmSlot[]
+  availability TeacherAvailability[]
+  maxSubstitutePeriods Int @default(2)
+  maxDailyPeriods Int @default(8)
 
   @@unique([schoolId, employeeNo])
+  @@unique([schoolId, id])
 }
 
 model ClassSubject {
@@ -586,7 +594,7 @@ model Portion {
 
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
 
   @@index([classId, date])
   @@index([schoolId])
@@ -731,4 +739,48 @@ model SiteAsset {
   mime      String
   data      Bytes
   updatedAt DateTime @default(now())
+}
+
+
+/// Server-owned action preview. A model cannot confirm or supply the stored payload.
+model AiProposal {
+  id String @id @default(cuid())
+  schoolId String
+  userId String
+  tool String
+  payload Json
+  snapshotHash String
+  fingerprint String
+  status String @default("PENDING")
+  expiresAt DateTime
+  executedAt DateTime?
+  result Json?
+  createdAt DateTime @default(now())
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  @@index([schoolId, userId, status, createdAt])
+}
+
+/// Persistent request budgets shared across instances. userId '*' is the school total.
+model AiUsage {
+  schoolId String
+  userId String
+  day DateTime @db.Date
+  requests Int @default(0)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  @@id([schoolId, userId, day])
+}
+
+/// Full-day absence, or a blocked time interval such as exam duty.
+model TeacherAvailability {
+  id String @id @default(cuid())
+  schoolId String
+  teacherId String
+  date DateTime @db.Date
+  kind String
+  startTime String?
+  endTime String?
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+  @@index([schoolId, date])
+  @@unique([teacherId, date, kind, startTime])
 }
