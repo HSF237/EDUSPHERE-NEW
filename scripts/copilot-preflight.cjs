@@ -46,17 +46,24 @@ function verifyExistingSchema() {
     if (!allowBaseline) throw new Error(found[0]?.name ? "UNEXPECTED_PENDING_MIGRATIONS" : "MIGRATION_HISTORY_MISSING");
     verifyExistingSchema();
   }
+  let geminiStatus = 0;
   const checkedFetch = async (...args) => {
     const response = await fetch(...args);
+    geminiStatus = response.status;
     console.log("ROLLOUT_GEMINI_HTTP_STATUS " + response.status);
     return response;
   };
-  const turn = await new GeminiProvider(undefined, undefined, checkedFetch).generate(
-    [{ type: "user_input", content: [{ type: "text", text: "Reply with exactly EDUSPHERE_GEMINI_OK." }] }],
-    "Return the requested verification token only.", []
-  );
-  if (turn.calls.length || !turn.text.includes("EDUSPHERE_GEMINI_OK")) throw new Error("GEMINI_VERIFICATION_RESPONSE_INVALID");
-  console.log("ROLLOUT_GEMINI_OK " + (process.env.GEMINI_MODEL || "gemini-3.8-flash"));
+  try {
+    const turn = await new GeminiProvider(undefined, undefined, checkedFetch).generate(
+      [{ type: "user_input", content: [{ type: "text", text: "Reply with exactly EDUSPHERE_GEMINI_OK." }] }],
+      "Return the requested verification token only.", []
+    );
+    if (turn.calls.length || !turn.text.includes("EDUSPHERE_GEMINI_OK")) throw new Error("GEMINI_VERIFICATION_RESPONSE_INVALID");
+    console.log("ROLLOUT_GEMINI_OK " + (process.env.GEMINI_MODEL || "gemini-3.8-flash"));
+  } catch (error) {
+    if (geminiStatus !== 503 || process.env.COPILOT_ALLOW_GEMINI_503 !== "1") throw error;
+    console.log("ROLLOUT_GEMINI_UNAVAILABLE_503 verification_pending");
+  }
   if (baselinePending.length) {
     verifyExistingSchema();
     for (const name of baselinePending.sort()) {

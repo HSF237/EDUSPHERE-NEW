@@ -11,10 +11,10 @@ const rows = names.filter(n => n !== current).map(n => ({ migration_name: n,
   checksum: crypto.createHash("sha256").update(fs.readFileSync(`prisma/migrations/${n}/migration.sql`)).digest("hex"),
   finished_at: new Date(), rolled_back_at: null }));
 
-async function run(options: { allow?: boolean; history?: typeof rows; diff?: number; geminiFails?: boolean }) {
+async function run(options: { allow?: boolean; history?: typeof rows; diff?: number; geminiFails?: boolean; httpStatus?: number; allow503?: boolean }) {
   const events: string[] = [];
   const logs: string[] = [];
-  const processState = { execPath: process.execPath, env: { COPILOT_ALLOW_VERIFIED_BASELINE: options.allow ? "1" : "0" }, exitCode: 0 };
+  const processState = { execPath: process.execPath, env: { COPILOT_ALLOW_VERIFIED_BASELINE: options.allow ? "1" : "0", COPILOT_ALLOW_GEMINI_503: options.allow503 ? "1" : "0" }, exitCode: 0 };
   const db = { $queryRawUnsafe: async (sql: string) => sql.includes("to_regclass")
     ? [{ name: options.history ? "_prisma_migrations" : null }] : options.history,
     $disconnect: async () => {} };
@@ -26,8 +26,15 @@ async function run(options: { allow?: boolean; history?: typeof rows; diff?: num
       events.push(diff ? "diff" : `resolve:${args.at(-1)}`);
       return { status: diff ? options.diff ?? 0 : 0, stdout: "schema summary" };
     } },
-    "../src/lib/ai/provider.ts": { GeminiProvider: class { async generate() {
+    "../src/lib/ai/provider.ts": { GeminiProvider: class {
+      transport?: () => Promise<unknown>;
+      constructor(_key?: unknown, _model?: unknown, transport?: () => Promise<unknown>) { this.transport = transport; }
+      async generate() {
       events.push("gemini");
+      if (options.httpStatus) {
+        await this.transport?.();
+        if (options.httpStatus !== 200) throw new Error("sensitive upstream detail");
+      }
       if (options.geminiFails) throw new Error("sensitive upstream detail");
       return { calls: [], text: "EDUSPHERE_GEMINI_OK" };
     } } }
@@ -35,7 +42,7 @@ async function run(options: { allow?: boolean; history?: typeof rows; diff?: num
   await vm.runInNewContext(source, { require: (name: string) => {
     if (!(name in modules)) throw new Error("Unexpected module");
     return modules[name];
-  }, process: processState, console: { log: (s: string) => logs.push(s), error: (s: string) => logs.push(s) } });
+  }, process: processState, fetch: async () => ({ status: options.httpStatus }), console: { log: (s: string) => logs.push(s), error: (s: string) => logs.push(s) } });
   return { events, logs, code: processState.exitCode };
 }
 
@@ -79,4 +86,22 @@ test("a checksum mismatch stops before any API request or baseline write", async
   assert.equal(result.code, 1);
   assert.deepEqual(result.events, []);
   assert.match(result.logs.join("\n"), /MIGRATION_CHECKSUM_MISMATCH/);
+});
+
+test("HTTP 503 requires explicit rollout allowance and never claims successful verification", async () => {
+  const blocked = await run({ allow: true, httpStatus: 503 });
+  assert.equal(blocked.code, 1);
+  assert.ok(!blocked.events.some(e => e.startsWith("resolve:")));
+  const allowed = await run({ allow: true, httpStatus: 503, allow503: true });
+  assert.equal(allowed.code, 0);
+  assert.equal(allowed.events.filter(e => e.startsWith("resolve:")).length, rows.length);
+  assert.match(allowed.logs.join("\n"), /verification_pending/);
+  assert.doesNotMatch(allowed.logs.join("\n"), /ROLLOUT_GEMINI_OK/);
+});
+
+test("the service-unavailable allowance cannot bypass an authentication failure", async () => {
+  const result = await run({ allow: true, httpStatus: 403, allow503: true });
+  assert.equal(result.code, 1);
+  assert.ok(!result.events.some(e => e.startsWith("resolve:")));
+  assert.doesNotMatch(result.logs.join("\n"), /sensitive upstream detail/);
 });

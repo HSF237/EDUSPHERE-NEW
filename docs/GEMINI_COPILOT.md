@@ -26,6 +26,8 @@ The first rollout can run `npx prisma generate && node --import tsx scripts/copi
 
 If the production database already has the previous schema but no migration history, the explicit one-time flag `COPILOT_ALLOW_VERIFIED_BASELINE=1` allows recording the historical migrations. The script first requires a zero-difference, read-only Prisma comparison against `prisma/baselines/pre_copilot.prisma`, the schema from commit `4c89d572fa0bfb6fdf1506e0b2b28b2525e3b04c`. It also requires the Gemini API check to pass, repeats the schema comparison, then uses `prisma migrate resolve --applied` only for those verified historical migrations. It does not replay their SQL or historical data updates. The new Gemini migration is applied normally afterward. Remove the flag and first-rollout check after success.
 
+For a separately observed Gemini HTTP 503 outage, `COPILOT_ALLOW_GEMINI_503=1` permits completing the rollout while clearly logging `verification_pending`. It allows only HTTP 503; missing credentials, authentication failures, malformed responses and schema/history mismatches still block the rollout. This allowance does not validate the API key or claim a successful live response. Copilot reports API failures without executing school actions. Remove this one-time flag after rollout and verify a successful authenticated request when the service responds.
+
 Preview testing needs its own database, authentication secret and Gemini key in the Preview environment. The existing preview's successful build alone does not verify database access or a live Gemini response. After the approved rollout, sign in to `/copilot`, verify a read-only Gemini request, then inspect a class-creation preview without confirming it.
 
 ## Request path
