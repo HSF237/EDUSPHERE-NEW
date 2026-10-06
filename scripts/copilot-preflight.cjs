@@ -46,7 +46,12 @@ function verifyExistingSchema() {
     if (!allowBaseline) throw new Error(found[0]?.name ? "UNEXPECTED_PENDING_MIGRATIONS" : "MIGRATION_HISTORY_MISSING");
     verifyExistingSchema();
   }
-  const turn = await new GeminiProvider().generate(
+  const checkedFetch = async (...args) => {
+    const response = await fetch(...args);
+    console.log("ROLLOUT_GEMINI_HTTP_STATUS " + response.status);
+    return response;
+  };
+  const turn = await new GeminiProvider(undefined, undefined, checkedFetch).generate(
     [{ type: "user_input", content: [{ type: "text", text: "Reply with exactly EDUSPHERE_GEMINI_OK." }] }],
     "Return the requested verification token only.", []
   );
@@ -61,7 +66,7 @@ function verifyExistingSchema() {
     }
   }
 })().catch(e => {
-  const safe = e.code || e.errorCode || (/^[A-Z_]+$/.test(e.message || "") ? e.message : e.name === "AgentError" ? e.message : "UNEXPECTED_PREFLIGHT_FAILURE");
+  const safe = e.code || e.errorCode || (/^[A-Z_]+$/.test(e.message || "") ? e.message : e.constructor?.name === "AgentError" ? e.message : "UNEXPECTED_PREFLIGHT_FAILURE");
   console.error("ROLLOUT_PREFLIGHT_FAILED " + safe);
   process.exitCode = 1;
 }).finally(() => db.$disconnect());
