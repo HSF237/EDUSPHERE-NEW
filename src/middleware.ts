@@ -10,7 +10,9 @@ const KEYED = /^\/([a-z][a-z-]*)\/(\d{11}[a-z]{8}[A-Z]{3})(\/.*)?$/;
 
 export async function middleware(req: NextRequest) {
   const m = req.nextUrl.pathname.match(KEYED);
-  if (!m) return NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-es-path", m ? `/${m[1]}${m[3] ?? ""}` : req.nextUrl.pathname);
+  if (!m) return NextResponse.next({ request: { headers: requestHeaders } });
   const [, section, key, rest = ""] = m;
   const secret = process.env.AUTH_SECRET;
   const token = req.cookies.get("es_session")?.value;
@@ -27,7 +29,7 @@ export async function middleware(req: NextRequest) {
   }
   const url = req.nextUrl.clone();
   url.pathname = `/${section}${rest}`;
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
 }
 
 export const config = { matcher: ["/((?!_next/|api/|favicon|icon|apple-icon|pwa-icon|logo|manifest|sw\\.js).*)"] };

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getCtx, pickChild } from "@/lib/scope";
 import { Card, PageHeader, Table, Badge, Empty } from "@/components/ui";
 import { fmtDate, todayUTC } from "@/lib/utils";
+import { HomeworkHelp } from "@/components/assistant/homework-help";
 import { NewHomework } from "./new-form";
 
 export const metadata = { title: "Homework" };
@@ -11,7 +12,7 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
   const ctx = await getCtx();
   const sp = await searchParams;
   const today = todayUTC();
-  if (ctx.role === "PARENT") {
+  if ((ctx.role === "PARENT" || ctx.role === "STUDENT")) {
     const { kids, kid } = await pickChild(ctx, sp.child);
     if (!kid) return (<><PageHeader title="Homework" /><Card><Empty title="No children linked" /></Card></>);
     const list = await db.homework.findMany({ where: { classId: kid.classId, schoolId: ctx.schoolId }, include: { subject: true, submissions: { where: { studentId: kid.id } } }, orderBy: { dueOn: "desc" }, take: 50 });
@@ -25,7 +26,7 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
           {list.map((h) => {
             const done = h.submissions[0]?.done; const overdue = h.dueOn < today && !done;
             return (<Card key={h.id}><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-semibold">{h.title}</div><div className="text-xs text-slate-500">{h.subject.name} · Due {fmtDate(h.dueOn)}</div></div>
-              <Badge tone={done ? "green" : overdue ? "red" : "amber"}>{done ? "Completed" : overdue ? "Overdue" : "Pending"}</Badge></div><p className="mt-2 text-sm text-slate-600">{h.description}</p>{h.fileId && <a className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 hover:underline" href={`/api/files/${h.fileId}`} target="_blank" rel="noreferrer">📎 Attachment</a>}</Card>);
+              <Badge tone={done ? "green" : overdue ? "red" : "amber"}>{done ? "Completed" : overdue ? "Overdue" : "Pending"}</Badge></div><p className="mt-2 text-sm text-slate-600">{h.description}</p><HomeworkHelp id={h.id} />{h.fileId && <a className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 hover:underline" href={`/api/files/${h.fileId}`} target="_blank" rel="noreferrer">📎 Attachment</a>}</Card>);
           })}
         </div>
       </>

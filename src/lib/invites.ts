@@ -6,15 +6,15 @@ import { SITE } from "./site";
 export const newToken = () => randomBytes(24).toString("base64url");
 
 export const DAY = 24 * 60 * 60 * 1000;
-export const joinPath = (kind: "TEACHER" | "PARENT" | "RESET", token: string) =>
-  kind === "TEACHER" ? `/join/teacher/${token}` : kind === "PARENT" ? `/join/parent/${token}` : `/reset/${token}`;
+export const joinPath = (kind: "TEACHER" | "PARENT" | "RESET" | "STUDENT", token: string) =>
+  kind === "STUDENT" ? `/join/student/${token}` : kind === "TEACHER" ? `/join/teacher/${token}` : kind === "PARENT" ? `/join/parent/${token}` : `/reset/${token}`;
 export const absUrl = (path: string) => `${process.env.NEXT_PUBLIC_SITE_URL || SITE.url}${path}`;
 
 export type InviteState = "ok" | "expired" | "used" | "revoked";
 export const inviteState = (i: { expiresAt: Date; uses: number; maxUses: number; revokedAt: Date | null }, now = new Date()): InviteState =>
   i.revokedAt ? "revoked" : i.expiresAt <= now ? "expired" : i.uses >= i.maxUses ? "used" : "ok";
 
-export async function loadInvite(token: string, kind: "TEACHER" | "PARENT" | "RESET") {
+export async function loadInvite(token: string, kind: "TEACHER" | "PARENT" | "RESET" | "STUDENT") {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
   const inv = await db.invite.findUnique({ where: { token }, include: { school: true, student: { include: { class: true } }, user: true } });
   if (!inv || inv.kind !== kind) return null;

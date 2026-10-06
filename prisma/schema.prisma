@@ -12,12 +12,14 @@ enum Role {
   ADMIN
   TEACHER
   PARENT
+  STUDENT
 }
 
 enum InviteKind {
   TEACHER
   PARENT
   RESET
+  STUDENT
 }
 
 enum AttStatus {
@@ -127,6 +129,7 @@ model User {
 
   school   School?              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   invites  Invite[]
+  student  Student?
   teacher  Teacher?
   children Guardian[]
   sent     Message[]
@@ -235,6 +238,8 @@ model ClassSubject {
 }
 
 model Student {
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   id          String    @id @default(cuid())
   schoolId    String
   classId     String
@@ -790,6 +795,7 @@ model AiUsage {
 
 /// Full-day absence, or a blocked time interval such as exam duty.
 model TeacherAvailability {
+  reason String?
   id String @id @default(cuid())
   schoolId String
   teacherId String

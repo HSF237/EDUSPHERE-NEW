@@ -8,14 +8,14 @@ export type NavItem = {
   /** A teacher granted this permission sees the item whatever their mode. */
   perm?: Perm;
 };
-const all: Role[] = ["ADMIN", "TEACHER", "PARENT", "SUPER_ADMIN"];
+const all: Role[] = ["ADMIN", "TEACHER", "PARENT", "SUPER_ADMIN", "STUDENT"];
 const school: Role[] = ["ADMIN", "TEACHER", "PARENT"];
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: all, icon: "home", group: "Overview" },
-  { href: "/copilot", label: "AI Copilot", roles: school, icon: "bolt", group: "Overview" },
+  { href: "/copilot", label: "AI Copilot", roles: [...school,"STUDENT"], icon: "bolt", group: "Overview" },
   { href: "/schools", label: "Schools", roles: ["SUPER_ADMIN"], icon: "building", group: "Overview" },
   { href: "/attendance", label: "Attendance", roles: school, icon: "attendance", group: "Daily", tMode: "CLASS", perm: "ATTENDANCE_APPROVE" },
-  { href: "/homework", label: "Homework", roles: school, icon: "book", group: "Daily" },
+  { href: "/homework", label: "Homework", roles: [...school,"STUDENT"], icon: "book", group: "Daily" },
   { href: "/portions", label: "Discussed portions", roles: school, icon: "clipboard", group: "Daily" },
   { href: "/diary", label: "Class diary", roles: school, icon: "notebook", group: "Daily", tMode: "CLASS" },
   { href: "/timetable", label: "Timetable", roles: school, icon: "clock", group: "Daily" },
@@ -26,7 +26,7 @@ export const NAV: NavItem[] = [
   { href: "/announcements", label: "Announcements", roles: school, icon: "megaphone", group: "Connect" },
   { href: "/ptm", label: "Parent meetings", roles: school, icon: "users", group: "Connect" },
   { href: "/meetings", label: "Teacher meetings", roles: ["ADMIN","TEACHER"], icon: "users", group: "Connect" },
-  { href: "/notifications", label: "Notifications", roles: school, icon: "bell", group: "Connect" },
+  { href: "/notifications", label: "Notifications", roles: [...school,"STUDENT"], icon: "bell", group: "Connect" },
   { href: "/students", label: "Students", roles: ["ADMIN", "TEACHER"], icon: "cap", group: "School", tMode: "CLASS", perm: "STUDENTS" },
   { href: "/teachers", label: "Teachers", roles: ["ADMIN"], icon: "teacher", group: "School", perm: "TEACHERS" },
   { href: "/classes", label: "Classes & subjects", roles: ["ADMIN"], icon: "layers", group: "School", perm: "CLASSES" },

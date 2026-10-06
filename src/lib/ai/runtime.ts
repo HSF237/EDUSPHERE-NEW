@@ -6,6 +6,7 @@ import { AgentError, exactAbsence, exactClass, exactClasses, exactDate, exactTea
 import { isFree, planCoverage, type PlanningData, type Assignment } from "./planner";
 import { TOOLS, toolByName, validateCall, type Tool } from "./tools";
 import type { Approval, FunctionCall } from "./provider";
+import { personalUpdates, scopedHomework } from "./updates";
 import { applySchoolPlan, buildSchoolPlan, schoolSnapshot, searchSchoolRecords } from "./school";
 
 type Tx = Prisma.TransactionClient;
@@ -36,6 +37,7 @@ async function fresh(tx:Tx,actor:Actor,write=false) {
   assertActor(actor);
   const u=await tx.user.findFirst({where:{id:actor.user.id,schoolId:actor.schoolId,active:true},include:{school:true,teacher:true}});
   if (!u?.school?.active || u.mustChangePassword || u.role!==actor.role) throw new AgentError("Your account or permissions changed. Sign in again.");
+  if (u.role === "STUDENT" && !(await tx.student.findFirst({where:{userId:u.id,schoolId:actor.schoolId,active:true,class:{schoolId:actor.schoolId}},select:{id:true}}))) throw new AgentError("Your student account is no longer active.");
   const updated={...actor,perms:u.teacher?.permissions ?? [],timezone:u.school.timezone,teacherId:u.teacher?.id ?? null,readOnly:isReadOnly(accessOf(u.school).state)};
   if (write && (u.role!=="ADMIN" || updated.readOnly)) throw new AgentError("Only a principal with an active school plan can confirm these changes.");
   return updated;
@@ -136,6 +138,11 @@ export async function dispatch(actor:Actor,request:string,call:FunctionCall):Pro
       const yearName=exactYear(request,args.academic_year as string,snap.year.name);
       if (codes.some(code=>snap.classes.some(c=>c.name===code))) throw new AgentError("One or more divisions already exist. No duplicate classes will be created.");
       return prepare(tx,current,call.name,{classCodes:[...codes].sort(),yearId:snap.year.id,academicYear:yearName},hash(snap));
+    }
+    if (call.name === "get_my_updates" || call.name === "get_homework") {
+      const data = call.name === "get_my_updates" ? await personalUpdates(tx,current) : await scopedHomework(tx,current,String(args.homework_id));
+      await audit(tx,current,"READ",call.name,{resultHash:hash(data)});
+      return {data};
     }
     const day=exactDate(request,args.date as string,current.timezone);
     let data:unknown;

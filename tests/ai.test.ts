@@ -37,7 +37,7 @@ test("academic year derives from backend only when omitted",()=>{
 const actor=(role:Actor["role"]="ADMIN",perms:string[]=[]):Actor=>({schoolId:"school-a",role,classIds:["8B"],childIds:[],teacherId:"t",perms,support:false,user:{id:"user-a",mustChangePassword:false},timezone:"Asia/Kolkata",readOnly:false});
 test("parent cannot prepare writes or query school attendance/status",()=>{
   const allowed=declarations(actor("PARENT")).map(t=>t.name);
-  assert.deepEqual(allowed,["get_class_timetable"]);
+  assert.deepEqual(allowed,["get_class_timetable","get_my_updates","get_homework"]);
   assert.equal(mayUse(actor("PARENT"),toolByName("create_classes")),false);
 });
 test("delegated teacher can read reports but approvals remain principal-only",()=>{

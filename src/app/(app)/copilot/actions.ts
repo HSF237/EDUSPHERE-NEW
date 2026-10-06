@@ -10,7 +10,7 @@ import { assertActor, cancelProposal, confirmProposal, declarations, dispatch, r
 const requestSchema=z.object({message:z.string().trim().min(1).max(4000),history:z.array(z.object({role:z.enum(["user","assistant"]),text:z.string().max(4000)}).strict()).max(6)}).strict();
 const approvalSchema=z.object({id:z.string().min(1).max(128),fingerprint:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 export async function copilotActor():Promise<Actor> {
-  const ctx=await getCtx({allowLocked:true});
+  const ctx=await getCtx({allowLocked:true,allowStudent:true});
   const actor:Actor={...ctx,user:{id:ctx.user.id,mustChangePassword:ctx.user.mustChangePassword},timezone:ctx.user.school?.timezone ?? "Asia/Kolkata",readOnly:ctx.access?.state==="LOCKED"||ctx.access?.state==="SETUP"};
   assertActor(actor);
   if (!ctx.user.school?.active) throw new AgentError("This school is inactive.");

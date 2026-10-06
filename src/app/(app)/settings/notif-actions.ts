@@ -5,7 +5,7 @@ import { getCtx } from "@/lib/scope";
 import { KINDS, parsePrefs } from "@/lib/notif";
 
 export async function saveNotifPrefs(fd: FormData) {
-  const ctx = await getCtx({ allowLocked: true });
+  const ctx = await getCtx({ allowLocked: true, allowStudent: true });
   const on = new Set(fd.getAll("kind").map(String));
   const quietOn = fd.get("quietOn") === "on";
   const prefs = parsePrefs({

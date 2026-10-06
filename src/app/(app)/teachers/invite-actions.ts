@@ -31,6 +31,7 @@ export async function createResetLink(userId: string): Promise<{ error?: string;
   if (!target?.schoolId) return { error: "Account not found." };
   const allowed =
     (ctx.role === "SUPER_ADMIN" && target.role === "ADMIN") ||
+    (target.schoolId === ctx.schoolId && target.role === "STUDENT" && ctx.role === "ADMIN") ||
     (target.schoolId === ctx.schoolId && target.role === "TEACHER" && can(ctx, "TEACHERS")) ||
     (target.schoolId === ctx.schoolId && target.role === "PARENT" && (ctx.role === "ADMIN" || can(ctx, "STUDENTS") || (ctx.role === "TEACHER" && ctx.mode === "CLASS" && (await db.guardian.count({ where: { userId, student: { classId: { in: ctx.classIds } } } })) > 0)));
   if (!allowed) return { error: "You can’t reset this account." };

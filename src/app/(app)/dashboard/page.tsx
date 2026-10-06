@@ -1,3 +1,4 @@
+import { StudentDashboard } from "@/components/assistant/student-dashboard";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -13,6 +14,7 @@ export const metadata = { title: "Dashboard" };
 export default async function Dashboard() {
   const ctx = await getCtx();
   if (ctx.role === "SUPER_ADMIN") return <PlatformDash />;
+  if (ctx.role === "STUDENT") return <StudentDashboard ctx={ctx}/>;
   if (ctx.role === "PARENT") return <ParentDash ctx={ctx} />;
   if (ctx.role === "TEACHER" && ctx.mode === "SUBJECT") return <SubjectDash ctx={ctx} />;
   return <StaffDash ctx={ctx} />;

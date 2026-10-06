@@ -4,7 +4,7 @@ import { db } from "../db";
 import { accessOf, isReadOnly } from "../billing";
 import { AgentError, localDay, minutes, utcDay } from "./policy";
 import type { Actor } from "./runtime";
-const inputSchema=z.object({teacherId:z.string().min(1).max(128),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),kind:z.enum(["ABSENT","BLOCKED"]),startTime:z.string().max(5),endTime:z.string().max(5)}).strict();
+const inputSchema=z.object({teacherId:z.string().min(1).max(128),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),kind:z.enum(["ABSENT","BLOCKED"]),startTime:z.string().max(5),endTime:z.string().max(5),reason:z.string().trim().max(500).optional()}).strict();
 export async function saveAvailability(actor:Actor,input:unknown) {
   const parsed=inputSchema.safeParse(input);
   if (!parsed.success) throw new AgentError("Choose a teacher, date and valid availability type.");
@@ -18,8 +18,8 @@ export async function saveAvailability(actor:Actor,input:unknown) {
     if (!teacher) throw new AgentError("Teacher not found in your school.");
     const startTime=data.kind==="BLOCKED"?data.startTime:null,endTime=data.kind==="BLOCKED"?data.endTime:null;
     const existing=await tx.teacherAvailability.findFirst({where:{schoolId:actor.schoolId,teacherId:teacher.id,date,kind:data.kind,startTime}});
-    if (existing) await tx.teacherAvailability.update({where:{id:existing.id},data:{endTime}});
-    else await tx.teacherAvailability.create({data:{schoolId:actor.schoolId,teacherId:teacher.id,date,kind:data.kind,startTime,endTime}});
+    if (existing) await tx.teacherAvailability.update({where:{id:existing.id},data:{endTime,reason:data.reason || null}});
+    else await tx.teacherAvailability.create({data:{schoolId:actor.schoolId,teacherId:teacher.id,date,kind:data.kind,startTime,endTime,reason:data.reason || null}});
     await tx.auditLog.create({data:{schoolId:actor.schoolId,userId:actor.user.id,action:"AI_AVAILABILITY_SAVED",entity:teacher.id,detail:JSON.stringify({date:data.date,kind:data.kind,startTime,endTime})}});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }

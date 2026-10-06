@@ -18,7 +18,7 @@ async function spend(tx: Pick<typeof db, "invite">, id: string) {
   return !!inv && inv.uses <= inv.maxUses;
 }
 
-async function signIn(u: { id: string; role: "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "PARENT"; schoolId: string | null; name: string; email: string }) {
+async function signIn(u: { id: string; role: "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "PARENT" | "STUDENT"; schoolId: string | null; name: string; email: string }) {
   await createSession({ userId: u.id, role: u.role, schoolId: u.schoolId, name: u.name, email: u.email });
 }
 
@@ -151,4 +151,15 @@ export async function resetPassword(token: string, _: State, fd: FormData): Prom
   });
   if (!ok) return { error: "This reset link was just used or cancelled." };
   redirect("/login?reset=1");
+}
+
+export async function studentRegister(token: string, _: State, fd: FormData): Promise<State> {
+  if (await getSession()) return { error: "Sign out before creating a student account." };
+  const email = str(fd, "email", 200).toLowerCase(), password = String(fd.get("password") ?? ""), confirm = String(fd.get("confirm") ?? "");
+  if (password !== confirm) return { error: "The two passwords don’t match." };
+  let user;
+  try { const { registerStudent } = await import("@/lib/student-accounts"); user = await registerStudent(token, email, password); }
+  catch (e) { const { AgentError } = await import("@/lib/ai/policy"); return { error: e instanceof AgentError ? e.message : "Could not create the account. Use a unique email or ask your principal for help." }; }
+  await signIn(user);
+  redirect("/dashboard");
 }

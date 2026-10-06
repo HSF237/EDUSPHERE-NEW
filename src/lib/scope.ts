@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { requireUser, getSession } from "./session";
 import { accessOf, isReadOnly } from "./billing";
+import { studentPageAllowed } from "./student-access";
 import type { Perm } from "./perms";
 
 export const WORKSPACE_COOKIE = "es_class";
@@ -19,7 +20,7 @@ const gate = cache(() => ({ done: false }));
  * `allowLocked` lets billing/export/password actions run on a read-only (unpaid) school.
  * Enforcement runs once per request, on the first call, which for a server action is the action itself.
  */
-export async function getCtx(opts?: { allowLocked?: boolean }) {
+export async function getCtx(opts?: { allowLocked?: boolean; allowStudent?: boolean }) {
   const user = await requireUser();
   const sess = await getSession();
   const support = !!sess?.sup;
@@ -32,6 +33,12 @@ export async function getCtx(opts?: { allowLocked?: boolean }) {
       if (support) redirect("/dashboard?viewonly=1");
       if (user.role !== "SUPER_ADMIN" && access && isReadOnly(access.state) && !opts?.allowLocked) redirect("/billing?locked=1");
     }
+  }
+  if (user.role === "STUDENT") {
+    const h = await headers();
+    if (h.get("next-action") ? !opts?.allowStudent : !opts?.allowStudent && !studentPageAllowed(h.get("x-es-path") ?? "")) redirect("/dashboard");
+    const student = await db.student.findFirst({ where: { userId: user.id, schoolId: user.schoolId ?? "", active: true, class: { schoolId: user.schoolId ?? "" } }, select: { id: true } });
+    if (!student || !user.school?.active) redirect("/login");
   }
   const schoolId = user.schoolId;
   let classIds: string[] = [];
@@ -54,6 +61,10 @@ export async function getCtx(opts?: { allowLocked?: boolean }) {
       const picked = (await cookies()).get(WORKSPACE_COOKIE)?.value;
       active = workspaces.find((w) => w.id === picked) ?? workspaces[0] ?? null;
       classIds = active ? [active.id] : [];
+    } else if (user.role === "STUDENT") {
+      const student = await db.student.findFirst({ where: { userId: user.id, schoolId, active: true, class: { schoolId } }, select: { id: true, classId: true } });
+      childIds = student ? [student.id] : [];
+      classIds = student ? [student.classId] : [];
     } else if (user.role === "PARENT") {
       const g = await db.guardian.findMany({ where: { userId: user.id }, include: { student: true } });
       childIds = g.map((x) => x.studentId);

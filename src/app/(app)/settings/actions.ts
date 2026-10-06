@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getCtx } from "@/lib/scope";
 
 export async function changePassword(_: { error?: string; ok?: boolean } | undefined, fd: FormData) {
-  const ctx = await getCtx();
+  const ctx = await getCtx({allowStudent:true});
   const cur = String(fd.get("current") ?? ""); const next = String(fd.get("next") ?? "");
   if (next.length < 8) return { error: "New password must be at least 8 characters." };
   const u = await db.user.findUniqueOrThrow({ where: { id: ctx.user.id } });

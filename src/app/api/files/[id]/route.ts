@@ -17,6 +17,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const g = await db.guardian.findUnique({ where: { userId_studentId: { userId: u.id, studentId: f.studentId } } });
     if (!g) return new Response("Not found", { status: 404 });
   }
+  if (u.role === "STUDENT") {
+    const student = await db.student.findFirst({where:{userId:u.id,schoolId:u.schoolId,active:true,school:{active:true},class:{schoolId:u.schoolId}},select:{classId:true}});
+    if (!student || f.studentId || !(await db.homework.findFirst({where:{fileId:f.id,schoolId:u.schoolId,classId:student.classId,class:{schoolId:u.schoolId}},select:{id:true}}))) return new Response("Not found",{status:404});
+  }
   const inline = isInline(f.mime);
   return new Response(Buffer.from(f.data), {
     headers: {

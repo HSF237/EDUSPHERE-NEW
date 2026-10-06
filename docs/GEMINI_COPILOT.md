@@ -176,3 +176,20 @@ A live Gemini request, authenticated browser interaction against a deployed data
 - Key security: https://ai.google.dev/gemini-api/docs/api-key
 
 For a rollout whose class-preview, tool-continuation and expanded-meeting live checks already passed, GEMINI_VERIFY_ONLY=clarification runs only the remaining missing-details check. This is a one-time verification selection, not an outage bypass: failed requests still fail the build.
+
+
+## Assistant across the app and daily updates
+
+Signed-in principals, teachers, parents and students have an **Ask AI** button across their authorized pages. The dashboard shows a daily update; the first recorded update in a login/day also appears as a dismissible notice. Chat and unsubmitted drafts persist while navigating within the signed-in app. Updates refresh on navigation, window focus and every five minutes while visible. These updates query school records directly and do not consume the Gemini request budget. The API uses private, no-store responses; school records are never stored in browser storage. Browser session storage remembers only that the notice has been seen.
+
+The two additional read tools are `get_my_updates` and `get_homework` (11 enabled tools total). Principal prompts show recorded absences and uncovered timetable lessons, and open the existing approval-based substitution workflow. Teachers see absences for themselves or colleagues assigned to their current-year classes, with a polite message-drafting prompt. Missing information is described as **no reason recorded**, never an accusation. Private absence reasons are not shown to colleagues. Message drafts are not automatically sent. Student and parent prompts use linked active students and homework in those students’ classes; assignments marked complete are omitted. Homework help reads the actual assignment and offers explanations/hints; it cannot submit or mark work complete.
+
+Absence prompts require a recorded full-day absence under Copilot → Teacher availability. No absence is inferred from a missing login or a blank attendance sheet. Principals can optionally record a reason there. Dates use the school timezone.
+
+### Student login
+
+Only the principal can issue a student invitation: **Students → open a student → Create student access link**. A link expires in seven days and can create one student login. The student opens it while signed out, supplies a unique email and password, then uses the ordinary sign-in page. The invitation, account creation and roster link are consumed atomically. Existing parent accounts remain parent accounts.
+
+Student accounts have only Dashboard, Homework, AI Copilot, Notifications and Settings. A central server scope gate rejects other pages and disables all existing school actions unless explicitly approved for student use (AI read/chat, own password/settings, own notification read state). The middleware overwrites the canonical page header for both normal and keyed paths. AI queries re-resolve the roster link/class on every read, regardless of IDs in conversation history. Students cannot access staff records, classmates’ submissions, other classes’ homework or school administration. Their file endpoint permits only homework attachments from their own class. Account and student deactivation are checked at login and during AI requests.
+
+Migration `20261014000000_student_assistant` adds STUDENT role/invitation values, an optional unique Student→User link and an optional teacher availability reason. It preserves existing records and logins.

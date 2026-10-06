@@ -38,3 +38,16 @@ export async function bulkParentLinks(classId: string): Promise<{ error?: string
   await db.auditLog.create({ data: { schoolId: ctx.schoolId, userId: ctx.user.id, action: "parent_links_bulk", entity: classId } });
   return { items };
 }
+
+/** Only the principal can authorize a student login. */
+export async function studentLink(studentId: string): Promise<{ error?: string; path?: string }> {
+  const ctx = await getCtx();
+  if (ctx.role !== "ADMIN") return { error: "Only the principal can invite a student." };
+  const st = await db.student.findFirst({ where: { id: studentId, schoolId: ctx.schoolId, active: true, class: { schoolId: ctx.schoolId } } });
+  if (!st || st.userId) return { error: "This student is unavailable or already has a login." };
+  const now = new Date();
+  let inv = await db.invite.findFirst({ where: { studentId, schoolId: ctx.schoolId, kind: "STUDENT", uses: 0, maxUses: 1, revokedAt: null, expiresAt: { gt: now } } });
+  if (!inv) inv = await db.invite.create({ data: { token: newToken(), kind: "STUDENT", schoolId: ctx.schoolId, createdById: ctx.user.id, studentId, maxUses: 1, expiresAt: new Date(+now + 7 * DAY) } });
+  await db.auditLog.create({ data: { schoolId: ctx.schoolId, userId: ctx.user.id, action: "student_invite", entity: studentId } });
+  return { path: joinPath("STUDENT", inv.token) };
+}

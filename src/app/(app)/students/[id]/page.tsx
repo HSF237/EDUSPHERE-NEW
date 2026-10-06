@@ -5,7 +5,7 @@ import { Card, PageHeader, Stat, Table, Badge } from "@/components/ui";
 import { fmtDate, pct } from "@/lib/utils";
 import { LinkMaker } from "@/components/link-maker";
 import { createResetLink } from "../../teachers/invite-actions";
-import { parentLink } from "../invite-actions";
+import { parentLink, studentLink } from "../invite-actions";
 import { UploadForm } from "@/components/upload-form";
 import { addStudentDoc, deleteStudentDoc, uploadStudentPhoto } from "../file-actions";
 import { prettySize } from "@/lib/files";
@@ -33,6 +33,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4"><Stat label="Attendance" value={`${pct(pres, total)}%`} tone="indigo" /><Stat label="Days absent" value={g("ABSENT")} tone="red" /><Stat label="Days late" value={g("LATE")} tone="amber" /><Stat label="Date of birth" value={s.dob ? fmtDate(s.dob) : "—"} /></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Guardians">{s.guardians.length === 0 ? <p className="text-sm text-slate-500">No parent account linked.</p> : s.guardians.map((x) => <div key={x.id} className="mb-3 text-sm"><b>{x.user.name}</b> · {x.user.email}<div className="mt-1"><LinkMaker compact action={createResetLink.bind(null, x.userId)} label="Password reset link" message="Reset your EduSphere password here:" /></div></div>)}<div className="mt-3 border-t border-slate-100 pt-3"><LinkMaker compact action={parentLink.bind(null, s.id)} label="Create parent access link" message={`Open this link to see ${s.name}’s school updates on EduSphere:`} /></div></Card>
+        {ctx.role === "ADMIN" && <Card title="Student login">{s.userId ? <><p className="text-sm text-slate-600">A student account is linked. The student can sign in from the normal login page.</p><LinkMaker compact action={createResetLink.bind(null,s.userId)} label="Student password reset link" message="Reset your EduSphere student password here:" /></> : <LinkMaker action={studentLink.bind(null,s.id)} label="Create student access link" message={`Create your student login for ${s.name} on EduSphere:`} />}</Card>}
         <Card title="Photo & documents">
           <div className="flex items-start gap-4">
             {s.photoFileId ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={`/api/files/${s.photoFileId}`} alt={`${s.name}`} className="h-24 w-20 rounded-xl object-cover ring-1 ring-slate-200" /> : <div className="grid h-24 w-20 place-items-center rounded-xl bg-slate-100 text-xs text-slate-400">No photo</div>}

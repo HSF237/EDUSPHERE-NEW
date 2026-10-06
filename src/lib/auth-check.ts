@@ -13,6 +13,7 @@ export async function checkLogin(emailRaw: string, password: string): Promise<{ 
     const mins = Math.max(1, Math.ceil((u.lockedUntil.getTime() - Date.now()) / 60000));
     return { error: `Too many failed attempts. Try again in ${mins} minute${mins === 1 ? "" : "s"}, or ask your school for a password reset link.` };
   }
+  if (u?.role === "STUDENT" && !(await db.student.findFirst({where:{userId:u.id,schoolId:u.schoolId ?? "",active:true,school:{active:true},class:{schoolId:u.schoolId ?? ""}},select:{id:true}}))) return {error:"This student login is inactive. Ask your principal for help."};
   const ok = u && u.active && (await bcrypt.compare(password, u.passwordHash));
   if (!u || !ok) {
     if (u) {

@@ -8,7 +8,7 @@ export const metadata = { title: "Notifications" };
 
 async function markAll() {
   "use server";
-  const ctx = await getCtx();
+  const ctx = await getCtx({allowStudent:true});
   await db.notification.updateMany({ where: { userId: ctx.user.id, read: false }, data: { read: true } });
   revalidatePath("/notifications");
 }

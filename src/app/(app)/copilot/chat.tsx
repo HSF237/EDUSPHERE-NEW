@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Icon } from "@/components/icons";
 import type { Approval } from "@/lib/ai/provider";
 import { approveCopilot, cancelCopilot, chatWithCopilot } from "./actions";
@@ -64,12 +64,15 @@ function ApprovalCard({approval,onEdit,onComplete}:{approval:Approval;onEdit:(te
     </div>
   </section>;
 }
-export function CopilotChat({ready,principal,readOnly,initialPreviews}:{ready:boolean;principal:boolean;readOnly:boolean;initialPreviews:Approval[]}) {
+export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,learner=false}:{ready:boolean;principal:boolean;readOnly:boolean;initialPreviews:Approval[];learner?:boolean;draft?:{text:string;id:number}}) {
   const [messages,setMessages]=useState<Message[]>(initialPreviews.map(a=>({id:a.id,role:"assistant",text:"You have a pending preview to review.",approval:a})));
   const [input,setInput]=useState("");
+  const inputId = useId();
+  useEffect(()=>{if(draft?.text){setInput(draft.text);textarea.current?.focus();}},[draft?.id,draft?.text]);
+  useEffect(()=>{setMessages(previous=>{const ids=new Set(previous.map(m=>m.id));const extra=initialPreviews.filter(a=>!ids.has(a.id));return extra.length?[...previous,...extra.map(a=>({id:a.id,role:"assistant" as const,text:"You have a pending preview to review.",approval:a}))]:previous;});},[initialPreviews]);
   const [pending,startTransition]=useTransition();
   const textarea=useRef<HTMLTextAreaElement>(null),sending=useRef(false);
-  const examples=principal?["Schedule a meeting for the teachers of Class IX. Ask me for the date, time and venue.","Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D.","Find pending attendance and leave requests for my review."]:["Show the timetable for 8B tomorrow.","Help me explain photosynthesis.","Help me draft five science questions."];
+  const examples=principal?["Schedule a meeting for the teachers of Class IX. Ask me for the date, time and venue.","Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D.","Find pending attendance and leave requests for my review."]:learner?["Show my homework updates for today.","Help me work through my homework one step at a time.","Give me practice questions on photosynthesis."]:["Show the timetable for 8B tomorrow.","Help me explain photosynthesis.","Help me draft five science questions."];
   function edit(text:string) {setInput(text);textarea.current?.focus();}
   function complete(id:string,text:string,links?:{label:string;path:string}[]) {setMessages(previous=>previous.map(m=>m.approval?.id===id?{...m,text,approval:undefined,links}:m));}
   function submit(event:React.FormEvent) {
@@ -96,6 +99,6 @@ export function CopilotChat({ready,principal,readOnly,initialPreviews}:{ready:bo
       {messages.map(m=><div key={m.id} className={m.role==="user"?"ml-auto max-w-[90%] rounded-2xl bg-brand-600 px-4 py-3 text-white":"max-w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-800"}><p className="mb-1 text-xs font-semibold opacity-65">{m.role==="user"?"You":"EduSphere"}</p><MessageText text={m.text}/>{m.links?.map(link=><a key={link.path} href={link.path} target="_blank" rel="noreferrer" className="mt-3 block rounded-xl border border-brand-200 bg-white p-3 text-sm font-semibold text-brand-700">Open private link: {link.label}</a>)}{m.approval && <ApprovalCard approval={m.approval} onEdit={edit} onComplete={complete} />}</div>)}
       {pending && <p role="status" className="text-sm text-slate-500">EduSphere is checking your request…</p>}
     </div>
-    <form onSubmit={submit} className="border-t border-slate-100 bg-slate-50 p-4 sm:p-5"><label className="sr-only" htmlFor="copilot-message">Your request to EduSphere</label><div className="flex items-end gap-3"><textarea id="copilot-message" ref={textarea} value={input} onChange={e=>setInput(e.target.value)} maxLength={4000} rows={3} disabled={!ready || pending} placeholder="Ask a question or describe a school action…" className="input min-h-24 flex-1 resize-y disabled:opacity-50" /><button type="submit" disabled={!ready || pending || !input.trim()} className="btn shrink-0 disabled:opacity-50"><Icon name="send" className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Send</span></button></div><p className="mt-3 text-xs text-slate-500">AI responses can contain mistakes. School changes require a confirmed preview. Do not share passwords.</p></form>
+    <form onSubmit={submit} className="border-t border-slate-100 bg-slate-50 p-4 sm:p-5"><label className="sr-only" htmlFor={inputId}>Your request to EduSphere</label><div className="flex items-end gap-3"><textarea id={inputId} ref={textarea} value={input} onChange={e=>setInput(e.target.value)} maxLength={4000} rows={3} disabled={!ready || pending} placeholder="Ask a question or describe a school action…" className="input min-h-24 flex-1 resize-y disabled:opacity-50" /><button type="submit" disabled={!ready || pending || !input.trim()} className="btn shrink-0 disabled:opacity-50"><Icon name="send" className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Send</span></button></div><p className="mt-3 text-xs text-slate-500">AI responses can contain mistakes. School changes require a confirmed preview. Do not share passwords.</p></form>
   </div>;
 }
