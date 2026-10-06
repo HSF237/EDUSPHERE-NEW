@@ -14,6 +14,16 @@ Do not paste a key into chat, commit it, put it in a client-side setting, or use
 
 The Gemini app subscription is not the application's API configuration. Use the API project's credentials, quotas and billing. Confirm applicable model access and pricing in AI Studio. This branch does not create a billing account, buy credits, deploy production or apply production database migrations.
 
+## Vercel rollout
+
+Vercel's default `npm run build` generates Prisma and builds Next.js; it does not apply database migrations. The Production environment needs `DATABASE_URL`, `AUTH_SECRET` and `GEMINI_API_KEY`. Environment changes apply to newly built deployments.
+
+For the initial approved production rollout, use the build command `npm run db:migrate && npm run build` so a failed migration prevents publishing the new application. Review migration history first: an existing database created with `prisma db push` may need a verified baseline; do not reset the database or blindly mark migrations applied. The Gemini migration adds tables, columns, indexes and constraints without changing existing Portion relationships or deleting school records.
+
+Keep a successful existing production deployment available for application rollback. A Vercel rollback does not undo database migrations. The new schema additions remain compatible with the previous application.
+
+Preview testing needs its own database, authentication secret and Gemini key in the Preview environment. The existing preview's successful build alone does not verify database access or a live Gemini response. After the approved rollout, sign in to `/copilot`, verify a read-only Gemini request, then inspect a class-creation preview without confirming it.
+
 ## Request path
 
 The authenticated Copilot server action resolves the real user, school, workspace and permissions. It validates request size, reserves a persistent request budget and sends the message to Gemini with only permitted function declarations. Gemini returns structured function calls. The runtime validates schemas and exact request values, rechecks database authorization and executes controlled reads or stores a preview. The browser receives the result or an approval card.

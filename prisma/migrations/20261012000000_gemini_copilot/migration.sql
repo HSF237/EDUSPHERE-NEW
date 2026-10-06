@@ -1,6 +1,3 @@
--- DropForeignKey
-ALTER TABLE "Portion" DROP CONSTRAINT "Portion_teacherId_fkey";
-
 -- AlterTable
 ALTER TABLE "School" ADD COLUMN     "timezone" TEXT NOT NULL DEFAULT 'Asia/Kolkata';
 
@@ -60,9 +57,6 @@ CREATE UNIQUE INDEX "TeacherAvailability_teacherId_date_kind_startTime_key" ON "
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Teacher_schoolId_id_key" ON "Teacher"("schoolId", "id");
-
--- AddForeignKey
-ALTER TABLE "Portion" ADD CONSTRAINT "Portion_schoolId_teacherId_fkey" FOREIGN KEY ("schoolId", "teacherId") REFERENCES "Teacher"("schoolId", "id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AiProposal" ADD CONSTRAINT "AiProposal_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE CASCADE ON UPDATE CASCADE;
