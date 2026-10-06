@@ -43,3 +43,9 @@ Migrations run on container start. **Do not run the seed in production** (it ref
 ## Layout
 
 `prisma/schema.prisma` data model · `src/lib` auth, scoping, db · `src/components` UI kit · `src/app/(app)/*` modules, each with its page and server actions.
+
+## Gemini Copilot
+
+The **AI Copilot** page uses a server-side Gemini API key for authorized school queries and principal-approved class creation/substitute coverage. Set `GEMINI_API_KEY`, apply the new Prisma migration, and deploy. Gemini is the reasoning layer; EduSphere owns permission checks, exact-value validation, previews, transactional execution and audit logs. No GPU or custom model training is needed.
+
+See [Gemini Copilot setup and architecture](docs/GEMINI_COPILOT.md) for implemented tools, limitations, request budgets and rollout checks. Never commit a real API key or use a `NEXT_PUBLIC_` key.
