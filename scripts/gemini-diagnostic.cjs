@@ -27,7 +27,7 @@ async function probe(path, body, label) {
     const input = [{ type: "user_input", content: [{ type: "text", text: "Reply with exactly EDUSPHERE_GEMINI_OK." }] }];
     const result = await probe("/v1/interactions", { model, input, store: false, generation_config: { max_output_tokens: 128 } }, model + ":v1");
     if (result.ok) console.log("GEMINI_DIAGNOSTIC " + JSON.stringify({ model, validSteps: Array.isArray(result.data?.steps) }));
-    if (model === models[0]) {
+    if (model === models[0] || !result.ok) {
       await probe("/v1beta/interactions", { model, input, store: false, generation_config: { max_output_tokens: 128 } }, model + ":v1beta");
       await probe("/v1beta/models/" + model + ":generateContent", { contents: [{ role: "user", parts: [{ text: "Reply with exactly EDUSPHERE_GEMINI_OK." }] }], generationConfig: { maxOutputTokens: 128 } }, model + ":generateContent");
     }
