@@ -26,7 +26,13 @@ export function Tour({ userId, role, name, available, needsPlan, checklist }: { 
   const step = steps[idx];
 
   const finish = useCallback(() => { try { localStorage.setItem(key, "done"); } catch { /* ignore */ } setOpen(false); }, [key]);
-  const start = useCallback(() => { setDesktop(window.innerWidth >= 1024); setIdx(0); setPanel(false); setOpen(true); }, []);
+  const start = useCallback(() => { window.dispatchEvent(new CustomEvent("edusphere-overlay-open",{detail:"guide"})); setDesktop(window.innerWidth >= 1024); setIdx(0); setPanel(false); setOpen(true); }, []);
+
+  useEffect(() => {
+    const closeForAssistant = (event: Event) => { if ((event as CustomEvent).detail === "assistant") { setPanel(false); setOpen(false); } };
+    window.addEventListener("edusphere-overlay-open", closeForAssistant);
+    return () => window.removeEventListener("edusphere-overlay-open", closeForAssistant);
+  }, []);
 
   useEffect(() => {
     try { if (!localStorage.getItem(key)) { const t = setTimeout(start, 900); return () => clearTimeout(t); } } catch { /* ignore */ }
@@ -98,11 +104,11 @@ export function Tour({ userId, role, name, available, needsPlan, checklist }: { 
   if (!open) {
     return (
       <>
-        <button type="button" onClick={() => setPanel((p) => !p)} aria-label="Open the guide" aria-expanded={panel} className="no-print fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-brand-600 px-4 py-3 text-sm font-bold text-white shadow-lg hover:bg-brand-700 lg:bottom-6">
-          <span className="grid h-5 w-5 place-items-center rounded-full bg-white/20 text-xs">?</span>Guide{checklist && done < checklist.length && <span className="rounded-full bg-white/25 px-1.5 text-[11px]">{done}/{checklist.length}</span>}
+        <button type="button" onClick={() => { if (!panel) window.dispatchEvent(new CustomEvent("edusphere-overlay-open",{detail:"guide"})); setPanel((p) => !p); }} aria-label="Open the guide" aria-expanded={panel} className="no-print fixed bottom-24 left-4 z-40 flex items-center gap-2 rounded-full bg-brand-600 px-3 py-3 text-sm font-bold text-white shadow-lg hover:bg-brand-700 lg:bottom-6 lg:left-80 lg:px-4">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-white/20 text-xs">?</span>Guide{checklist && done < checklist.length && <span className="hidden rounded-full bg-white/25 px-1.5 text-[11px] min-[420px]:inline">{done}/{checklist.length}</span>}
         </button>
         {panel && (
-          <div role="dialog" aria-label="Guide" className="fixed bottom-40 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:bottom-20">
+          <div role="dialog" aria-label="Guide" className="fixed bottom-40 left-4 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:bottom-20 lg:left-80">
             <div className="flex items-center justify-between"><h2 className="text-base font-extrabold text-slate-900">Guide</h2><button onClick={() => setPanel(false)} className="text-slate-400 hover:text-slate-700" aria-label="Close">✕</button></div>
             <button onClick={start} className="btn mt-3 w-full">Take the full tour</button>
             {checklist && (

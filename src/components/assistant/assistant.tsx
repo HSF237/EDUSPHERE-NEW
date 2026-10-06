@@ -34,8 +34,14 @@ export function Assistant({userId,login,ready,principal,readOnly,learner}:{userI
     return ()=>{window.clearInterval(timer);window.removeEventListener("focus",focus);document.removeEventListener("visibilitychange",focus);};
   },[refresh]);
   const show=useCallback((prompt="")=>{
+    window.dispatchEvent(new CustomEvent("edusphere-overlay-open",{detail:"assistant"}));
     setDraft(d=>({text:prompt,id:d.id+1}));setStarted(true);setOpen(true);setNotice(false);void refresh(true);
   },[refresh]);
+  useEffect(()=>{
+    const closeForGuide=(event:Event)=>{if((event as CustomEvent).detail==="guide"){setOpen(false);setNotice(false);}};
+    window.addEventListener("edusphere-overlay-open",closeForGuide);
+    return()=>window.removeEventListener("edusphere-overlay-open",closeForGuide);
+  },[]);
   useEffect(()=>{
     const handle=(event:Event)=>{const prompt=(event as CustomEvent<{prompt?:string}>).detail?.prompt;if(typeof prompt==="string")show(prompt.slice(0,4000));};
     window.addEventListener("edusphere-assistant",handle);return()=>window.removeEventListener("edusphere-assistant",handle);
