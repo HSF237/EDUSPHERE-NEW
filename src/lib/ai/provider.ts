@@ -6,27 +6,43 @@ export interface ModelProvider {
 }
 export function configured() { return Boolean(process.env.GEMINI_API_KEY?.trim()); }
 export class GeminiProvider implements ModelProvider {
-  constructor(private apiKey=process.env.GEMINI_API_KEY ?? "", private model=process.env.GEMINI_MODEL ?? "gemini-3.8-flash", private transport:typeof fetch=fetch) {}
+  constructor(private apiKey=process.env.GEMINI_API_KEY ?? "", private model=process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite", private transport:typeof fetch=fetch,
+    private log:(message:string)=>void=message=>console.warn(message)) {}
   async generate(input:Record<string,unknown>[], system:string, tools:Record<string,unknown>[]):Promise<ProviderTurn> {
     if (!this.apiKey.trim()) throw new AgentError("Gemini is not configured. Ask the site administrator to set GEMINI_API_KEY on the server.");
-    let response:Response;
+    let response:Response | undefined;
+    const signal=AbortSignal.timeout(20000); // One deadline across both attempts and their response bodies.
+    const body=JSON.stringify({model:this.model,system_instruction:system,input,tools,store:false,generation_config:{max_output_tokens:2048}});
     try {
-      response = await this.transport("https://generativelanguage.googleapis.com/v1beta/interactions",{
+      for (let attempt=1;attempt<=2;attempt++) {
+        response = await this.transport("https://generativelanguage.googleapis.com/v1/interactions",{
         method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":this.apiKey},
-        body:JSON.stringify({model:this.model,system_instruction:system,input,tools,store:false,generation_config:{max_output_tokens:2048}}),
-        signal:AbortSignal.timeout(20000),cache:"no-store",
-      });
+        body,signal,cache:"no-store",
+        });
+        if (response.ok) break;
+        // Status and attempt only. Never log prompts, keys, model output, or upstream error bodies.
+        this.log("COPILOT_GEMINI_HTTP " + JSON.stringify({status:response.status,attempt}));
+        if (attempt===2 || ![502,503,504].includes(response.status)) break;
+        await response.body?.cancel();
+        await new Promise(resolve=>setTimeout(resolve,300+Math.floor(Math.random()*200)));
+        signal.throwIfAborted();
+      }
     } catch { throw new AgentError("Gemini did not respond in time. Please try again. No school actions were executed."); }
+    if (!response) throw new AgentError("Gemini did not respond. Please try again.");
     if (!response.ok) {
       // Never reflect upstream error bodies: they may contain credentials or user content.
       if (response.status===429) throw new AgentError("Gemini’s request limit was reached. Please try later.");
       if (response.status===401 || response.status===403) throw new AgentError("Gemini rejected the server credentials. Ask the site administrator to check the API key.");
-      throw new AgentError("Gemini is unavailable or the configured model is unsupported. Please try later.");
+      if ([502,503,504].includes(response.status)) throw new AgentError("Google’s Gemini service is temporarily unavailable. An automatic retry also failed. Please try again shortly. No school actions were executed.");
+      if (response.status>=500) throw new AgentError("Google’s Gemini service is temporarily unavailable. Please try again shortly. No school actions were executed.");
+      if (response.status===400 || response.status===404) throw new AgentError("Gemini rejected the server model or request configuration. Ask the site administrator to check the Copilot settings.");
+      throw new AgentError("Gemini could not process this request. Please try again.");
     }
-    const body = await response.text();
-    if (body.length>1000000) throw new AgentError("Gemini returned an oversized response.");
+    let responseBody:string;
+    try { responseBody=await response.text(); } catch { throw new AgentError("Gemini did not finish responding. Please try again."); }
+    if (responseBody.length>1000000) throw new AgentError("Gemini returned an oversized response.");
     let value:Record<string,unknown>;
-    try { value=JSON.parse(body); } catch {throw new AgentError("Gemini returned an invalid response.");}
+    try { value=JSON.parse(responseBody); } catch {throw new AgentError("Gemini returned an invalid response.");}
     if (!value || typeof value!=="object" || !Array.isArray(value.steps) || value.steps.some(s=>!s || typeof s!=="object")) throw new AgentError("Gemini returned an invalid interaction.");
     const steps=value.steps as Record<string,unknown>[];
     const calls:FunctionCall[]=[];

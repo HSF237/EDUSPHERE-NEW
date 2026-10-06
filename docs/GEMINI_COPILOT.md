@@ -7,7 +7,7 @@ EduSphere uses Gemini through a server-side API key. No custom model training, K
 1. Install dependencies with `npm ci`.
 2. Apply the migration with `npm run db:migrate` against the intended PostgreSQL database.
 3. Set `GEMINI_API_KEY` in the **server** environment. For local work use `.env.local`; Prisma CLI also needs `DATABASE_URL` supplied in its environment or `.env`.
-4. Set `GEMINI_MODEL` to a model available to your API project. The provided default follows Google's current Interactions examples: `gemini-3.8-flash`.
+4. Set `GEMINI_MODEL` to a model available to your API project. The default is `gemini-3.1-flash-lite` on the stable `v1/interactions` API. This combination responded successfully to a private Vercel diagnostic when `gemini-3.8-flash` consistently returned HTTP 503.
 5. Build and deploy, then sign in with an active school account and open **AI Copilot**. Principals see Principal Copilot.
 
 Do not paste a key into chat, commit it, put it in a client-side setting, or use a `NEXT_PUBLIC_` variable. The code reads the key only in the server provider and sends it as an HTTP header. No key is returned to the browser. Missing configuration produces a setup message and disables chat, without fabricated responses.
@@ -139,6 +139,10 @@ Serializable transactions retry recognized Prisma serialization conflicts up to 
 ## Provider interface and budgets
 
 `ModelProvider.generate` returns normalized calls, text and native steps. The Gemini implementation uses the REST Interactions API and `store:false`; it preserves all native steps inside a single request's tool loop, including thought signatures, and returns only user-facing text/previews to the client. It disables any automatic action execution by controlling dispatch itself. No third-party SDK or AI framework is required at runtime.
+
+Transient HTTP 502/503/504 responses receive one automatic retry within a shared 20-second deadline. The request and model remain identical, and backend tool dispatch happens only after a valid successful response. Authentication, configuration and quota errors are not retried. `COPILOT_GEMINI_HTTP` logs contain only HTTP status and attempt number. Persistent service failures show a service-unavailable message instead of suggesting that the model is unsupported. A retry cannot resolve a sustained Google outage.
+
+For private endpoint diagnostics, run `node scripts/gemini-diagnostic.cjs` in a build with the production environment. It uses a generic verification prompt and logs only status, validated error codes and candidate model availability. It deliberately exits unsuccessfully to prevent a diagnostic build from replacing the application. Never use it as the project's normal build command.
 
 A future provider can implement the same interface. It must produce registry names and normalized calls; it must not own authorization, approvals or database execution. This integration uses Gemini only and does not deploy or train Qwen.
 

@@ -128,7 +128,7 @@ test("agent enforces bounded rounds",async()=>{
 test("Gemini transport sends key in server header and opts out of stored interactions",async()=>{
   let payload:Record<string,unknown>={};
   const transport:typeof fetch=async(url,init)=>{
-    assert.equal(url,"https://generativelanguage.googleapis.com/v1beta/interactions");
+    assert.equal(url,"https://generativelanguage.googleapis.com/v1/interactions");
     assert.equal((init?.headers as Record<string,string>)["x-goog-api-key"],"test-secret");
     assert.ok(!String(init?.body).includes("test-secret"));
     payload=JSON.parse(String(init?.body));
@@ -139,8 +139,35 @@ test("Gemini transport sends key in server header and opts out of stored interac
   assert.equal((payload.generation_config as Record<string,unknown>).max_output_tokens,2048);
 });
 test("Gemini errors never echo upstream credentials/content",async()=>{
-  const provider=new GeminiProvider("test-secret","test",async()=>new Response("test-secret private student record",{status:403}));
+  let requests=0; const logs:string[]=[];
+  const provider=new GeminiProvider("test-secret","test",async()=>{requests++;return new Response("test-secret private student record",{status:403});},s=>logs.push(s));
   await assert.rejects(()=>provider.generate([],"",[]),e=>e instanceof AgentError && !e.message.includes("test-secret") && !e.message.includes("student"));
+  assert.equal(requests,1); assert.doesNotMatch(logs.join("\n"),/test-secret|student/);
+});
+test("temporary Gemini failure retries the same request and dispatches one approval preview",async()=>{
+  const bodies:string[]=[]; const signals:unknown[]=[]; let dispatched=0;
+  const provider=new GeminiProvider("secret","model",async(_url,init)=>{
+    bodies.push(String(init?.body)); signals.push(init?.signal);
+    return bodies.length===1 ? new Response("private upstream content",{status:503}) : new Response(JSON.stringify({steps:[{type:"function_call",id:"one",name:"create_classes",arguments:{grade:8,divisions:["8A","8B","8C","8D"]}}]}));
+  },()=>{});
+  const reply=await runAgent(provider,"Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D.",[],[{name:"create_classes"}],async()=>{
+    dispatched++;return {approval:{id:"proposal",fingerprint:"hash",tool:"create_classes",expiresAt:"later",status:"PENDING",changes:{}}};
+  },"ADMIN");
+  assert.equal(bodies.length,2);assert.equal(bodies[0],bodies[1]);assert.equal(signals[0],signals[1]);
+  assert.equal(dispatched,1);assert.equal(reply.approval?.id,"proposal");
+});
+test("persistent Gemini outage stops after two attempts without dispatching school actions",async()=>{
+  let requests=0;let dispatched=0;const logs:string[]=[];
+  const provider=new GeminiProvider("secret","model",async()=>{requests++;return new Response("secret private student",{status:503});},s=>logs.push(s));
+  await assert.rejects(()=>runAgent(provider,"create classes",[],[{name:"create_classes"}],async()=>{dispatched++;return {};},"ADMIN"),e=>e instanceof AgentError && /temporarily unavailable/.test(e.message) && !/unsupported|student|secret/.test(e.message));
+  assert.equal(requests,2);assert.equal(dispatched,0);assert.doesNotMatch(logs.join("\n"),/secret|student/);
+});
+test("invalid configuration and request limits fail without automatic retries",async()=>{
+  for (const status of [400,404,429]) {
+    let requests=0;
+    const provider=new GeminiProvider("secret","model",async()=>{requests++;return new Response("private",{status});},()=>{});
+    await assert.rejects(()=>provider.generate([],"",[]),AgentError);assert.equal(requests,1);
+  }
 });
 test("Gemini rejects malformed calls and duplicate IDs",async()=>{
   const provider=new GeminiProvider("test","test",async()=>new Response(JSON.stringify({steps:[{type:"function_call",id:"x",name:"get_school_status",arguments:{date:"today"}},{type:"function_call",id:"x",name:"get_school_status",arguments:{date:"today"}}]})));

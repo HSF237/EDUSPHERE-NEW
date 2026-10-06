@@ -59,7 +59,7 @@ function verifyExistingSchema() {
       "Return the requested verification token only.", []
     );
     if (turn.calls.length || !turn.text.includes("EDUSPHERE_GEMINI_OK")) throw new Error("GEMINI_VERIFICATION_RESPONSE_INVALID");
-    console.log("ROLLOUT_GEMINI_OK " + (process.env.GEMINI_MODEL || "gemini-3.8-flash"));
+    console.log("ROLLOUT_GEMINI_OK " + (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite"));
   } catch (error) {
     if (geminiStatus !== 503 || process.env.COPILOT_ALLOW_GEMINI_503 !== "1") throw error;
     console.log("ROLLOUT_GEMINI_UNAVAILABLE_503 verification_pending");
