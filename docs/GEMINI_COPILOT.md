@@ -22,6 +22,8 @@ For the initial approved production rollout, use the build command `npm run db:m
 
 Keep a successful existing production deployment available for application rollback. A Vercel rollback does not undo database migrations. The new schema additions remain compatible with the previous application.
 
+The first rollout can run `npx prisma generate && node --import tsx scripts/copilot-preflight.cjs` before migration. This read-only check verifies the existing migration history and checksums, permits only the Gemini migration to be pending, and makes a generic Gemini verification request without school data. It stops on missing history, unexpected pending migrations, failed migrations or invalid API configuration; it never resets or baselines the database. Run it once for this release, then retain a Production-only migration/build command for later deployments. Preview builds should run `npm run build` and use their own database lifecycle.
+
 Preview testing needs its own database, authentication secret and Gemini key in the Preview environment. The existing preview's successful build alone does not verify database access or a live Gemini response. After the approved rollout, sign in to `/copilot`, verify a read-only Gemini request, then inspect a class-creation preview without confirming it.
 
 ## Request path
