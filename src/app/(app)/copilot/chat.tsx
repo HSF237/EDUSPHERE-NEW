@@ -68,10 +68,10 @@ function ApprovalCard({approval,onEdit,onComplete}:{approval:Approval;onEdit:(te
     </div>
   </section>;
 }
-export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,learner=false,claudeReady=false}:{ready:boolean;claudeReady?:boolean;principal:boolean;readOnly:boolean;initialPreviews:Approval[];learner?:boolean;draft?:{text:string;id:number}}) {
+export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,learner=false}:{ready:boolean;principal:boolean;readOnly:boolean;initialPreviews:Approval[];learner?:boolean;draft?:{text:string;id:number}}) {
   const [messages,setMessages]=useState<Message[]>(initialPreviews.map(a=>({id:a.id,role:"assistant",text:"You have a pending preview to review.",approval:a})));
   const [input,setInput]=useState("");
-  const [mode,setMode]=useState<"auto"|"local"|"gemini"|"claude">("auto");
+  const [mode,setMode]=useState<"auto"|"local"|"gemini">("auto");
   const inputId = useId();
   useEffect(()=>{if(draft?.text){setInput(draft.text);textarea.current?.focus();}},[draft?.id,draft?.text]);
   useEffect(()=>{setMessages(previous=>{const ids=new Set(previous.map(m=>m.id));const extra=initialPreviews.filter(a=>!ids.has(a.id));return extra.length?[...previous,...extra.map(a=>({id:a.id,role:"assistant" as const,text:"You have a pending preview to review.",approval:a}))]:previous;});},[initialPreviews]);
@@ -126,24 +126,23 @@ export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,lear
     </div>
     <div className="border-b border-slate-200/70 bg-white/95 px-4 py-4 sm:px-6">
       <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-[.13em] text-slate-500">Assistant mode</p><span className="text-[11px] text-slate-500">Switch anytime</span></div>
-      <div role="group" aria-label="Assistant mode" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-100 p-1.5 sm:grid-cols-4">
+      <div role="group" aria-label="Assistant mode" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1.5">
         <button type="button" aria-pressed={mode==="auto"} onClick={()=>setMode("auto")} className={mode==="auto"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70"}>Smart</button>
         <button type="button" aria-pressed={mode==="local"} onClick={()=>setMode("local")} className={mode==="local"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70"}>Free actions</button>
         <button type="button" aria-pressed={mode==="gemini"} disabled={!ready} onClick={()=>setMode("gemini")} className={mode==="gemini"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"}>Gemini {ready?"":"· off"}</button>
-        <button type="button" aria-pressed={mode==="claude"} disabled={!claudeReady} onClick={()=>setMode("claude")} className={mode==="claude"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"}>Claude {claudeReady?"":"· off"}</button>
+        
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-slate-500">{mode==="local"?"No AI model required: supported school queries and approval-based workflows only.":mode==="gemini"?"Gemini uses official server API access, not your personal Gemini subscription.":mode==="claude"?"Claude Haiku uses official server API access, not a personal Claude subscription.":"First tries free school actions. For other requests, uses configured Gemini or Claude (in that order)."}</p>
+      <p className="mt-2 text-xs leading-relaxed text-slate-500">{mode==="local"?"Free school actions use EduSphere’s secure backend without any external AI calls.":mode==="gemini"?"Gemini requires separately authorized API access; Google account sign-in and AI subscriptions do not provide it.":"Smart mode starts with free school actions, then uses Gemini only if officially authorized and configured."}</p>
       <details className="group mt-3 rounded-xl border border-slate-200/70 bg-slate-50">
         <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700">Other AI accounts <span className="float-right text-slate-500">Connection availability ↗</span></summary>
         <div className="space-y-2 border-t border-slate-200 px-3 py-3 text-xs text-slate-600">
           <p><b className="text-slate-800">ChatGPT:</b> Personal-plan integration for hosted apps requires official access and approval. <a href="https://developers.openai.com/siwc/quickstart" target="_blank" rel="noopener noreferrer" className="underline">Learn about eligibility</a>.</p>
-          <p><b className="text-slate-800">Claude:</b> Haiku 5.5 is supported via an optional official server API connection; consumer Claude subscriptions are separate.</p>
-          <p><b className="text-slate-800">Gemini:</b> Flash-Lite is supported via an optional official server API connection; Google login alone does not grant model access.</p>
+          <p><b className="text-slate-800">Gemini:</b> A Google login does not provide free Gemini API access. This school platform must meet Google’s age and privacy requirements before Gemini inference can be enabled.</p>
           <p className="text-amber-800">No personal AI login credentials or API keys are collected here. Unavailable providers are not represented as connected.</p>
         </div>
       </details>
     </div>
-    {!ready && !claudeReady && <p role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">No model provider is configured. Free school operations and preview cards are still available. Ask an authorized administrator to enable an official connection.</p>}
+    {!ready && <p role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Gemini is not enabled for school use. Free school operations and approval previews are still available without AI inference.</p>}
     {readOnly && <p className="mx-5 mt-4 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">Your school is read-only. Copilot can answer permitted questions; school changes are disabled.</p>}
     <div className="space-y-5 p-5 sm:p-7" role="log" aria-live="polite" aria-relevant="additions">
       {!messages.length && <section aria-label="Get started with EduSphere Intelligence" className="space-y-5">
