@@ -3,6 +3,7 @@
  * This is not an LLM. Never interpret unknown requests as authorized writes.
  */
 import { db } from "../db";
+import { parseAttendanceCommand } from "./attendance-command";
 import { dispatch, type Actor } from "./runtime";
 import type { AgentReply } from "./provider";
 
@@ -12,6 +13,17 @@ const teacherName = (name: string) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"
 export async function runQuickCommand(actor: Actor, message: string): Promise<AgentReply | null> {
   const request = message.trim();
   if (!request) return null;
+
+  const attendance=actor.role==="TEACHER" ? parseAttendanceCommand(request) : null;
+  if (attendance) {
+    const result=await dispatch(actor,request,{
+      id:"quick-attendance",name:"mark_attendance",
+      arguments:{date:attendance.date,absentStudentRollNumbers:attendance.absent,lateStudentRollNumbers:attendance.late}
+    });
+    return result.approval
+      ? {text:"Attendance is ready for your review. No register has been changed yet.",approval:result.approval}
+      : {text:"Couldn't prepare the attendance preview."};
+  }
 
   if (/^(?:show|give|check|get|what(?:'s| is))\b/i.test(request) && /\b(?:school status|today's school|school summary)\b/i.test(request)) {
     const phrase = request.match(dateExpression)?.[1] ?? "today";
