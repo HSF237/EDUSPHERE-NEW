@@ -45,7 +45,8 @@ test("Teacher attendance previews and confirmations are scoped, reviewed and ato
       assert.ok(result.approval);
       assert.equal(await db.attendanceSession.count({where:{schoolId:f.school.id}}),0);
       const saved=await confirmProposal(f.actor,result.approval!.id,result.approval!.fingerprint);
-      assert.equal(saved.kind,"attendance_submitted");
+      assert.ok(saved && typeof saved==="object" && !Array.isArray(saved));
+      assert.equal((saved as {kind?:string}).kind,"attendance_submitted");
       const ses=await db.attendanceSession.findFirstOrThrow({where:{schoolId:f.school.id,classId:f.klass.id},include:{records:{include:{student:true}}}});
       assert.equal(ses.status,"PENDING");
       assert.deepEqual(Object.fromEntries(ses.records.map(x=>[x.student.rollNo,x.status])),{5:"ABSENT",9:"LATE",17:"ABSENT",20:"PRESENT"});
