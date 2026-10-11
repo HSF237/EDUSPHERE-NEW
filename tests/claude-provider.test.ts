@@ -38,7 +38,7 @@ test("Claude tool-use loop uses official messages format and never executes the 
   assert.equal(secondMessages[1].content[1].type,"tool_use");
   assert.equal(secondMessages[2].content[0].type,"tool_result");
   assert.equal(secondMessages[2].content[0].tool_use_id,"toolu_test_1");
-  assert.match(String(secondMessages[2].content[0].content),"absentTeacherCount");
+  assert.match(String(secondMessages[2].content[0].content),/absentTeacherCount/);
 });
 
 test("Claude output with a write tool remains an approval preview",async()=>{
