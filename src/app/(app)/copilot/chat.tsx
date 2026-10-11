@@ -67,38 +67,70 @@ function ApprovalCard({approval,onEdit,onComplete}:{approval:Approval;onEdit:(te
 export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,learner=false}:{ready:boolean;principal:boolean;readOnly:boolean;initialPreviews:Approval[];learner?:boolean;draft?:{text:string;id:number}}) {
   const [messages,setMessages]=useState<Message[]>(initialPreviews.map(a=>({id:a.id,role:"assistant",text:"You have a pending preview to review.",approval:a})));
   const [input,setInput]=useState("");
+  const [mode,setMode]=useState<"auto"|"local"|"gemini">("auto");
   const inputId = useId();
   useEffect(()=>{if(draft?.text){setInput(draft.text);textarea.current?.focus();}},[draft?.id,draft?.text]);
   useEffect(()=>{setMessages(previous=>{const ids=new Set(previous.map(m=>m.id));const extra=initialPreviews.filter(a=>!ids.has(a.id));return extra.length?[...previous,...extra.map(a=>({id:a.id,role:"assistant" as const,text:"You have a pending preview to review.",approval:a}))]:previous;});},[initialPreviews]);
   const [pending,startTransition]=useTransition();
   const textarea=useRef<HTMLTextAreaElement>(null),sending=useRef(false);
-  const examples=principal?["Schedule a meeting for the teachers of Class IX. Ask me for the date, time and venue.","Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D.","Find pending attendance and leave requests for my review."]:learner?["Show my homework updates for today.","Help me work through my homework one step at a time.","Give me practice questions on photosynthesis."]:["Show the timetable for 8B tomorrow.","Help me explain photosynthesis.","Help me draft five science questions."];
+  const examples=principal?["Show school status today.","Find available teachers in Period 3 today.","Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D."]:learner?["Show my updates today.","Help me work through my homework one step at a time.","Explain photosynthesis simply."]:["Show my updates today.","Find available teachers in Period 3 today.","Help me draft five science questions."];
   function edit(text:string) {setInput(text);textarea.current?.focus();}
   function complete(id:string,text:string,links?:{label:string;path:string}[]) {setMessages(previous=>previous.map(m=>m.approval?.id===id?{...m,text,approval:undefined,links}:m));}
   function submit(event:React.FormEvent) {
     event.preventDefault();
     const message=input.trim();
-    if (!message || !ready || sending.current) return;
+    if (!message || sending.current) return;
     sending.current=true;setInput("");
     const history=messages.filter(m=>!m.approval).slice(-6).map(m=>({role:m.role,text:m.text.slice(0,4000)}));
     setMessages(previous=>[...previous,{id:crypto.randomUUID(),role:"user",text:message}]);
     startTransition(async()=>{
       try {
-        const result=await chatWithCopilot({message,history});
+        const result=await chatWithCopilot({message,history,mode});
         setMessages(previous=>[...previous,{id:crypto.randomUUID(),role:"assistant",text:result.error ?? result.text,approval:result.approval}]);
       } catch {setMessages(previous=>[...previous,{id:crypto.randomUUID(),role:"assistant",text:"Could not connect to Copilot. Please try again."}]);}
       finally {sending.current=false;}
     });
   }
-  return <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-    <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-100 text-brand-700"><Icon name="bolt" /></span><div><h2 className="font-semibold text-slate-900">EduSphere AI</h2><p className="text-xs text-slate-500">Powered by Gemini · {principal?"School operations and insights":"Help for your authorized workspace"}</p></div></div>
-    {!ready && <p role="status" className="m-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">AI setup is pending. Ask the site administrator to configure Gemini on the server.</p>}
+  return <div className="es-ai-studio overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_-32px_rgba(24,34,73,.32)]">
+    <div className="es-ai-ambient relative isolate overflow-hidden bg-[#101a36] px-5 pb-6 pt-7 text-white sm:px-7">
+      <div aria-hidden="true" className="es-ai-grid absolute inset-0 opacity-40" />
+      <div aria-hidden="true" className="absolute -right-10 -top-24 h-64 w-64 rounded-full bg-violet-500/25 blur-3xl" />
+      <div aria-hidden="true" className="absolute -bottom-28 left-10 h-60 w-60 rounded-full bg-sky-500/20 blur-3xl" />
+      <div className="relative flex items-center justify-between gap-3">
+        <span className="flex items-center gap-3"><span className="es-ai-orb grid h-12 w-12 place-items-center rounded-[18px] border border-white/20 bg-white/10 text-amber-200 shadow-xl"><Icon name="bolt" className="h-6 w-6" /></span><span><span className="block text-lg font-black tracking-tight">EduSphere Intelligence</span><span className="block text-xs tracking-wide text-indigo-200">A calmer way to run your school</span></span></span>
+        <span className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold tracking-wide text-emerald-200">SCHOOL-SCOPED</span>
+      </div>
+      <div className="relative mt-6 max-w-lg">
+        <p className="text-[11px] font-bold uppercase tracking-[.22em] text-amber-200/80">YOUR OPERATIONS COPILOT</p>
+        <h3 className="mt-2 text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]">From a thought to a thoughtful action.</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-300">Explore school updates, prepare changes and approve every important decision before it happens.</p>
+      </div>
+    </div>
+    <div className="border-b border-slate-200/70 bg-white/95 px-4 py-4 sm:px-6">
+      <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-[.13em] text-slate-500">Assistant mode</p><span className="text-[11px] text-slate-500">Switch anytime</span></div>
+      <div role="group" aria-label="Assistant mode" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+        <button type="button" aria-pressed={mode==="auto"} onClick={()=>setMode("auto")} className={mode==="auto"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70"}>Smart</button>
+        <button type="button" aria-pressed={mode==="local"} onClick={()=>setMode("local")} className={mode==="local"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70"}>Free actions</button>
+        <button type="button" aria-pressed={mode==="gemini"} disabled={!ready} onClick={()=>setMode("gemini")} className={mode==="gemini"?"rounded-xl bg-white px-2 py-2.5 text-xs font-bold text-indigo-800 shadow-sm":"rounded-xl px-2 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45"}>Gemini {ready?"":"· off"}</button>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-slate-500">{mode==="local"?"No AI model or API key: supported school queries and approval-based workflows only.":mode==="gemini"?"Gemini is configured by your school's server administrator; this is not a personal Gemini account connection.":"Tries free, deterministic school actions first. Uses Gemini for other requests only when it is configured."}</p>
+      <details className="group mt-3 rounded-xl border border-slate-200/70 bg-slate-50">
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700">Other AI accounts <span className="float-right text-slate-500">Connection availability ↗</span></summary>
+        <div className="space-y-2 border-t border-slate-200 px-3 py-3 text-xs text-slate-600">
+          <p><b className="text-slate-800">ChatGPT:</b> Personal-plan integration for hosted apps requires official access and approval. <a href="https://developers.openai.com/siwc/quickstart" target="_blank" rel="noopener noreferrer" className="underline">Learn about eligibility</a>.</p>
+          <p><b className="text-slate-800">Claude:</b> A consumer Claude login is not an authorized general-purpose API connection.</p>
+          <p><b className="text-slate-800">Gemini:</b> Google sign-in alone does not grant Gemini API inference. Server API access is separate.</p>
+          <p className="text-amber-800">No personal AI login credentials or API keys are collected here. Unavailable providers are not represented as connected.</p>
+        </div>
+      </details>
+    </div>
+    {!ready && <p role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Gemini chat is not configured. Free actions such as school status, teacher availability and substitute previews are still available.</p>}
     {readOnly && <p className="mx-5 mt-4 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">Your school is read-only. Copilot can answer permitted questions; school changes are disabled.</p>}
     <div className="space-y-5 p-5 sm:p-7" role="log" aria-live="polite" aria-relevant="additions">
-      {!messages.length && <div className="py-6"><h3 className="text-xl font-semibold text-slate-900">What would you like to get done?</h3><p className="mt-2 text-sm text-slate-500">Use exact class divisions and teacher names. Proposed changes appear here for your review.</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{examples.map(text=><button key={text} onClick={()=>edit(text)} disabled={!ready || pending} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 disabled:opacity-50">{text}</button>)}</div></div>}
+      {!messages.length && <div className="py-6"><h3 className="text-xl font-semibold text-slate-900">What would you like to get done?</h3><p className="mt-2 text-sm text-slate-500">Use exact class divisions and teacher names. Proposed changes appear here for your review.</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{examples.map(text=><button key={text} onClick={()=>edit(text)} disabled={pending} className="group rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/60 p-4 text-left text-[13px] font-medium leading-relaxed text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md disabled:opacity-50">{text}</button>)}</div></div>}
       {messages.map(m=><div key={m.id} className={m.role==="user"?"ml-auto max-w-[90%] rounded-2xl bg-brand-600 px-4 py-3 text-white":"max-w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-800"}><p className="mb-1 text-xs font-semibold opacity-65">{m.role==="user"?"You":"EduSphere"}</p><MessageText text={m.text}/>{m.links?.map(link=><a key={link.path} href={link.path} target="_blank" rel="noreferrer" className="mt-3 block rounded-xl border border-brand-200 bg-white p-3 text-sm font-semibold text-brand-700">Open private link: {link.label}</a>)}{m.approval && <ApprovalCard approval={m.approval} onEdit={edit} onComplete={complete} />}</div>)}
       {pending && <p role="status" className="text-sm text-slate-500">EduSphere is checking your request…</p>}
     </div>
-    <form onSubmit={submit} className="border-t border-slate-100 bg-slate-50 p-4 sm:p-5"><label className="sr-only" htmlFor={inputId}>Your request to EduSphere</label><div className="flex items-end gap-3"><textarea id={inputId} ref={textarea} value={input} onChange={e=>setInput(e.target.value)} maxLength={4000} rows={3} disabled={!ready || pending} placeholder="Ask a question or describe a school action…" className="input min-h-24 flex-1 resize-y disabled:opacity-50" /><button type="submit" disabled={!ready || pending || !input.trim()} className="btn shrink-0 disabled:opacity-50"><Icon name="send" className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Send</span></button></div><p className="mt-3 text-xs text-slate-500">AI responses can contain mistakes. School changes require a confirmed preview. Do not share passwords.</p></form>
+    <form onSubmit={submit} className="border-t border-slate-100 bg-gradient-to-b from-white to-indigo-50/60 p-4 sm:p-5"><label className="sr-only" htmlFor={inputId}>Your request to EduSphere</label><div className="flex items-end gap-3"><textarea id={inputId} ref={textarea} value={input} onChange={e=>setInput(e.target.value)} maxLength={4000} rows={3} disabled={!ready || pending} placeholder="Ask a question or describe a school action…" className="input min-h-20 flex-1 resize-y rounded-2xl border-indigo-100 bg-white shadow-sm disabled:opacity-50" /><button type="submit" disabled={pending || !input.trim()} className="btn shrink-0 disabled:opacity-50"><Icon name="send" className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Send</span></button></div><p className="mt-3 text-xs text-slate-500">AI responses can contain mistakes. School changes require a confirmed preview. Do not share passwords.</p></form>
   </div>;
 }
