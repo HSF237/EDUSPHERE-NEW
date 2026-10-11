@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { getCtx } from "@/lib/scope";
 import { PageHeader } from "@/components/ui";
 import { configured } from "@/lib/ai/provider";
-import { claudeConfigured } from "@/lib/ai/claude";
 import { pendingPreviews } from "@/lib/ai/runtime";
 import { copilotActor } from "./actions";
 import { CopilotChat } from "./chat";
@@ -24,7 +23,7 @@ export default async function CopilotPage() {
   ]);
   return <>
     <PageHeader title={ctx.role==="ADMIN"?"Principal Copilot":"EduSphere Copilot"} sub="Ask about your school. Review and approve proposed changes." />
-    <CopilotChat learner={ctx.role==="STUDENT"||ctx.role==="PARENT"} ready={configured()} claudeReady={claudeConfigured()} principal={ctx.role==="ADMIN"} readOnly={actor.readOnly} initialPreviews={previews} />
+    <CopilotChat learner={ctx.role==="STUDENT"||ctx.role==="PARENT"} ready={configured()} principal={ctx.role==="ADMIN"} readOnly={actor.readOnly} initialPreviews={previews} />
     {ctx.role==="ADMIN" && <TeacherAvailability today={today} readOnly={actor.readOnly} teachers={teachers.map(t=>({id:t.id,name:t.user.name,maxDailyPeriods:t.maxDailyPeriods,maxSubstitutePeriods:t.maxSubstitutePeriods}))} records={records.map(r=>({id:r.id,date:r.date.toISOString().slice(0,10),kind:r.kind,startTime:r.startTime,endTime:r.endTime,reason:r.reason,teacher:r.teacher.user.name}))} />}
   </>;
 }
