@@ -6,9 +6,10 @@ import { db } from "@/lib/db";
 import { AgentError } from "@/lib/ai/policy";
 import { runQuickCommand } from "@/lib/ai/quick";
 import { configured, GeminiProvider, runAgent, type AgentReply } from "@/lib/ai/provider";
+import { claudeConfigured, ClaudeProvider } from "@/lib/ai/claude";
 import { assertActor, cancelProposal, confirmProposal, declarations, dispatch, reserveBudget, type Actor } from "@/lib/ai/runtime";
 
-const requestSchema=z.object({message:z.string().trim().min(1).max(4000),mode:z.enum(["auto","local","gemini"]).optional(),history:z.array(z.object({role:z.enum(["user","assistant"]),text:z.string().max(4000)}).strict()).max(6)}).strict();
+const requestSchema=z.object({message:z.string().trim().min(1).max(4000),mode:z.enum(["auto","local","gemini","claude"]).optional(),history:z.array(z.object({role:z.enum(["user","assistant"]),text:z.string().max(4000)}).strict()).max(6)}).strict();
 const approvalSchema=z.object({id:z.string().min(1).max(128),fingerprint:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 export async function copilotActor():Promise<Actor> {
   const ctx=await getCtx({allowLocked:true,allowStudent:true});
@@ -23,15 +24,18 @@ export async function chatWithCopilot(input:unknown):Promise<AgentReply> {
     const parsed=requestSchema.safeParse(input);
     if (!parsed.success) throw new AgentError("Please enter a request under 4,000 characters.");
     const mode=parsed.data.mode ?? "auto";
-    if (mode!=="gemini") {
+    if (mode==="auto" || mode==="local") {
       const result=await runQuickCommand(actor,parsed.data.message);
       if (result) return result;
-      if (mode==="local") return {text:"Fast actions support school status, available teachers by period, personal updates and principal-approved substitute plans. Switch to Gemini for open-ended questions when it is configured."};
+      if (mode==="local") return {text:"Free actions support school status, available teachers by period, personal updates, teacher attendance proposals, and principal-approved substitute plans. Select a configured provider for open-ended questions."};
     }
-    if (!configured()) return {text:"This question needs an AI model, which is not connected yet. Fast school actions work without an AI key. ChatGPT plan linking for hosted EduSphere needs official provider approval."};
+    const chosen=mode==="auto"?(configured()?"gemini":claudeConfigured()?"claude":null):mode;
+    if (!chosen || (chosen==="gemini"&&!configured()) || (chosen==="claude"&&!claudeConfigured())) {
+      return {text:"This request needs a configured AI provider. EduSphere's free school actions remain available, but personal Gemini and Claude subscriptions do not provide inference access inside third-party apps. Your school administrator can enable an official provider integration separately."};
+    }
     await reserveBudget(actor);
     const {localDay}=await import("@/lib/ai/policy");
-    return await runAgent(new GeminiProvider(),parsed.data.message,parsed.data.history,declarations(actor),call=>dispatch(actor,parsed.data.message,call),`Role: ${actor.role}. School timezone: ${actor.timezone}. Today's local date: ${localDay(new Date(),actor.timezone)}. Read-only account: ${actor.readOnly}. Validate exact values against the current user request.`);
+    return await runAgent(chosen==="claude"?new ClaudeProvider():new GeminiProvider(),parsed.data.message,parsed.data.history,declarations(actor),call=>dispatch(actor,parsed.data.message,call),`Role: ${actor.role}. School timezone: ${actor.timezone}. Today's local date: ${localDay(new Date(),actor.timezone)}. Read-only account: ${actor.readOnly}. Validate exact values against the current user request.`);
   } catch (e) {
     await db.auditLog.create({data:{schoolId:actor.schoolId,userId:actor.user.id,action:"AI_REJECTED",entity:"Copilot",detail:JSON.stringify({reason:e instanceof AgentError?"policy_or_provider":"internal_error"})}}).catch(()=>{});
     return {text:"",error:e instanceof AgentError?e.message:"Copilot could not complete that request. No school actions were executed. Please try again."};
