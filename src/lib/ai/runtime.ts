@@ -5,6 +5,7 @@ import type { Ctx } from "../scope";
 import { AgentError, exactAbsence, exactClass, exactClasses, exactDate, exactTeacher, exactYear, hash, localDay, utcDay } from "./policy";
 import { isFree, planCoverage, type PlanningData, type Assignment } from "./planner";
 import { TOOLS, toolByName, validateCall, type Tool } from "./tools";
+import { prepareTeacherAttendance, confirmTeacherAttendance } from "./attendance-service";
 import type { Approval, FunctionCall } from "./provider";
 import { personalUpdates, scopedHomework } from "./updates";
 import { applySchoolPlan, buildSchoolPlan, schoolSnapshot, searchSchoolRecords } from "./school";
@@ -16,7 +17,7 @@ export function assertActor(actor:Actor) {
 }
 export function mayUse(actor:Actor,tool:Tool) {
   if (!tool.enabled || !tool.allowedRoles.includes(actor.role)) return false;
-  if (!tool.readOnly) return actor.role==="ADMIN" && !actor.readOnly;
+  if (!tool.readOnly) return !actor.readOnly && (tool.name==="mark_attendance" ? actor.role==="TEACHER" : actor.role==="ADMIN");
   if (tool.name==="get_attendance") return actor.role==="ADMIN" || actor.role==="TEACHER";
   if (tool.capability==="REPORTS") return actor.role==="ADMIN" || (actor.role==="TEACHER" && actor.perms.includes("REPORTS"));
   if (tool.capability==="SUBSTITUTES") return actor.role==="ADMIN" || (actor.role==="TEACHER" && (actor.perms.includes("SUBSTITUTES") || tool.name==="get_teacher_timetable"));
@@ -119,7 +120,7 @@ export async function dispatch(actor:Actor,request:string,call:FunctionCall):Pro
   const tool=toolByName(call.name);
   const args=validateCall(call.name,call.arguments);
   return retryTransaction(async tx=>{
-    const current=await fresh(tx,actor,!tool.readOnly);
+    const current=await fresh(tx,actor,!tool.readOnly && tool.name!=="mark_attendance");
     if (!mayUse(current,tool)) throw new AgentError("You do not have permission for that action.");
     if(call.name==="search_school_records") {
       const data=await searchSchoolRecords(tx,current,args);
@@ -130,6 +131,10 @@ export async function dispatch(actor:Actor,request:string,call:FunctionCall):Pro
       const snapshot=await schoolSnapshot(tx,current.schoolId);
       const plan=buildSchoolPlan(snapshot,args,current);
       return prepare(tx,current,call.name,JSON.parse(JSON.stringify(plan)) as Prisma.InputJsonObject,hash(snapshot));
+    }
+    if (call.name==="mark_attendance") {
+      const planned=await prepareTeacherAttendance(tx,current,request,args);
+      return prepare(tx,current,call.name,planned.payload,planned.snapshotHash);
     }
     if (call.name==="create_classes") {
       const codes=args.class_codes as string[];
@@ -194,7 +199,7 @@ export async function dispatch(actor:Actor,request:string,call:FunctionCall):Pro
 }
 export async function confirmProposal(actor:Actor,id:string,fingerprint:string) {
   return retryTransaction(async tx=>{
-    const current=await fresh(tx,actor,true);
+    const current=await fresh(tx,actor);
     const p=await tx.aiProposal.findFirst({where:{id,schoolId:current.schoolId,userId:current.user.id}});
     if (!p || p.fingerprint!==fingerprint) throw new AgentError("The approval is missing or its preview changed.");
     const tool=toolByName(p.tool);
@@ -204,7 +209,9 @@ export async function confirmProposal(actor:Actor,id:string,fingerprint:string) 
     const payload=p.payload as Record<string,Prisma.JsonValue>;
     if (hash({schoolId:p.schoolId,userId:p.userId,tool:p.tool,payload:p.payload,snapshotHash:p.snapshotHash})!==p.fingerprint) throw new AgentError("The stored preview failed validation.");
     let result:Prisma.InputJsonObject;
-    if (p.tool==="create_classes") {
+    if (p.tool==="mark_attendance") {
+      result=await confirmTeacherAttendance(tx,current,p.payload,p.snapshotHash);
+    } else if (p.tool==="create_classes") {
       const snap=await classSnapshot(tx,current);
       if (hash(snap)!==p.snapshotHash) throw new AgentError("Classes or the academic year changed. Prepare a new preview.");
       const codes=zCodes(payload.classCodes);
