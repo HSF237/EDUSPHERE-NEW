@@ -48,6 +48,7 @@ export async function approveCopilot(input:unknown):Promise<{message?:string;err
       const actions=result.actions as {message:string;path?:string}[];
       return {message:String(result.message),links:actions.filter(a=>a.path&&/^\/(?:join\/(?:teacher|parent)|reset)\/[A-Za-z0-9_-]+$/.test(a.path)).map(a=>({label:a.message,path:a.path!}))};
     }
+    if(result.kind==="attendance_submitted") return {message:`Class ${result.className} attendance for ${result.date} was submitted for principal approval. ${result.absent} absent and ${result.late} late. No parent alerts are sent before approval.`};
     return {message:Array.isArray(result.createdClasses)?`Created ${result.createdClasses.join(", ")} for ${result.academicYear}.`:`Assigned ${result.assignedPeriods} substitute periods on ${result.date}. Teacher notifications were not sent.`};
   } catch (e) {return {error:e instanceof AgentError?e.message:"Could not confirm the action. Refresh the preview before retrying."};}
 }
