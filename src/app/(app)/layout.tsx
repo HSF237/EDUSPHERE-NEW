@@ -22,7 +22,6 @@ import { LiveBell } from "@/components/live-bell";
 import { hasCustom } from "@/lib/custom";
 import { getSession } from "@/lib/session";
 import { Assistant } from "@/components/assistant/assistant";
-import { claudeConfigured } from "@/lib/ai/claude";
 import { configured } from "@/lib/ai/provider";
 import type { Metadata } from "next";
 
@@ -148,7 +147,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {!ctx.support && (ctx.access?.state === "LOCKED" || ctx.access?.state === "SETUP") && (
           <div role="status" className="bg-red-50 px-4 py-2 text-sm text-red-900 sm:px-8">{ctx.access.state === "SETUP" ? "This school isn’t activated yet." : "This school’s plan has ended."} The account is read-only. Your data is safe and nothing is deleted. {user.role === "ADMIN" ? <Link href="/billing" className="font-semibold underline">{ctx.access.state === "SETUP" ? "Choose a plan" : "Renew to continue"}</Link> : "Please ask your principal to renew."}</div>
         )}
-        {!ctx.support && user.role !== "SUPER_ADMIN" && !!user.school?.active && <Assistant learner={user.role === "STUDENT" || user.role === "PARENT"} userId={user.id} login={user.lastLoginAt?.toISOString() ?? "registration"} ready={configured()} claudeReady={claudeConfigured()} principal={user.role === "ADMIN"} readOnly={ctx.access?.state === "LOCKED" || ctx.access?.state === "SETUP"} />}
+        {!ctx.support && user.role !== "SUPER_ADMIN" && !!user.school?.active && <Assistant learner={user.role === "STUDENT" || user.role === "PARENT"} userId={user.id} login={user.lastLoginAt?.toISOString() ?? "registration"} ready={configured()} principal={user.role === "ADMIN"} readOnly={ctx.access?.state === "LOCKED" || ctx.access?.state === "SETUP"} />}
         <main id="main" className="mx-auto max-w-6xl p-4 pb-28 sm:p-8 lg:pb-8">{children}</main>
         {tourRole && !ctx.support && <Tour userId={user.id} role={tourRole} name={user.name} available={items.map((i) => i.base)} needsPlan={ctx.access?.state === "SETUP" || ctx.access?.state === "LOCKED"} checklist={checklist} />}
         <BottomNav items={quick.map((q) => ({ href: q.href, base: q.base, label: q.label.split(" ")[0], icon: q.icon, badge: q.badge }))} />
