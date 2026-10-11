@@ -4,7 +4,18 @@ export type ProviderTurn = {steps:Record<string,unknown>[];calls:FunctionCall[];
 export interface ModelProvider {
   generate(input:Record<string,unknown>[], system:string, tools:Record<string,unknown>[]):Promise<ProviderTurn>;
 }
-export function configured() { return Boolean(process.env.GEMINI_API_KEY?.trim()); }
+/**
+ * Fail closed for EduSphere: Google Gemini Developer API terms currently exclude
+ * apps likely to be accessed by under-18s. A previously set API key alone must
+ * never activate the service for real school users.
+ *
+ * Enable only after a documented provider/legal/privacy review confirms that
+ * this particular deployment is eligible. This is not an age-gate workaround.
+ */
+export function configured() {
+  return process.env.EDUSPHERE_GEMINI_AUTHORIZED === "true"
+    && Boolean(process.env.GEMINI_API_KEY?.trim());
+}
 export class GeminiProvider implements ModelProvider {
   constructor(private apiKey=process.env.GEMINI_API_KEY ?? "", private model=process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite", private transport:typeof fetch=fetch,
     private log:(message:string)=>void=message=>console.warn(message)) {}
