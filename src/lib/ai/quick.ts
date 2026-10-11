@@ -3,7 +3,6 @@
  * This is not an LLM. Never interpret unknown requests as authorized writes.
  */
 import { db } from "../db";
-import { localDay } from "./policy";
 import { dispatch, type Actor } from "./runtime";
 import type { AgentReply } from "./provider";
 
@@ -25,6 +24,8 @@ export async function runQuickCommand(actor: Actor, message: string): Promise<Ag
       `School status for ${data.date}`,
       `Recorded absent teachers: ${data.absentTeachers?.length ? data.absentTeachers.join(", ") : "none recorded"}.`,
       `Approved class attendance registers: ${data.approvedAttendance?.length ?? 0}.`,
+      `Uncovered timetable periods: ${data.uncoveredPeriods ?? 0}.`,
+      `Pending AI approval plans: ${(data as {pendingAiApprovals?:number}).pendingAiApprovals ?? 0}.`,
       "This report includes only information currently recorded in EduSphere."
     ].join("\n"),observations:result.data ? [{tool:"get_school_status",data:result.data}]:[]};
   }
@@ -36,7 +37,8 @@ export async function runQuickCommand(actor: Actor, message: string): Promise<Ag
     const result = await dispatch(actor, `Find available teachers in period ${p[1]} on ${date}.`, {
       id:"quick-available",name:"get_available_teachers",arguments:{period:Number(p[1]),date}
     });
-    return {text:`Availability for period ${p[1]} on ${date} is based on the school's recorded timetable and availability. Review the candidate results before assigning anyone.`, observations: result.data ? [{tool:"get_available_teachers",data:result.data}]:[]};
+    const names=((result.data as {teachers?:{name:string}[]})?.teachers ?? []).map(t=>t.name);
+    return {text:`Available teachers for period ${p[1]} on ${date}: ${names.length?names.join(", "):"none recorded as free"}. Availability is checked against the timetable; subject suitability must be checked before assignment.`};
   }
 
   if (/\b(?:my updates|today's updates|my homework updates)\b/i.test(request)) {
