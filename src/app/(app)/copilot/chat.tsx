@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Icon } from "@/components/icons";
+import { AiArt, type AiArtKind } from "@/components/assistant/ai-art";
 import type { Approval } from "@/lib/ai/provider";
 import { approveCopilot, cancelCopilot, chatWithCopilot } from "./actions";
 
@@ -77,6 +78,19 @@ export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,lear
   const [pending,startTransition]=useTransition();
   const textarea=useRef<HTMLTextAreaElement>(null),sending=useRef(false);
   const examples=principal?["Show school status today.","Find available teachers in Period 3 today.","Create 4 new Class 8 divisions: 8A, 8B, 8C and 8D."]:learner?["Show my updates today.","Help me work through my homework one step at a time.","Explain photosynthesis simply."]:["Mark roll 5 and 17 absent and roll 9 late today.","Show my updates today.","Help me draft five science questions."];
+  const suggestions: {title:string;description:string;art:AiArtKind;command:string}[] = principal ? [
+    {title:"Morning briefing",description:"See what's happening across your school today.",art:"network",command:examples[0]},
+    {title:"Plan substitutions",description:"Find available teachers before assigning coverage.",art:"workflow",command:examples[1]},
+    {title:"Organize divisions",description:"Prepare new class divisions with a confirmation step.",art:"mascot",command:examples[2]},
+  ] : learner ? [
+    {title:"Today's learning",description:"Check your latest authorized school updates.",art:"attendance",command:examples[0]},
+    {title:"Understand homework",description:"Work through a question with guided explanations.",art:"mascot",command:examples[1]},
+    {title:"Explore a topic",description:"Ask a question whenever an AI provider is available.",art:"network",command:examples[2]},
+  ] : [
+    {title:"Take attendance",description:"Prepare a complete register with one clear instruction.",art:"attendance",command:examples[0]},
+    {title:"Classroom updates",description:"Catch up on your authorized school notices.",art:"network",command:examples[1]},
+    {title:"Plan a lesson",description:"Get help drafting learning activities and questions.",art:"mascot",command:examples[2]},
+  ];
   function edit(text:string) {setInput(text);textarea.current?.focus();}
   function complete(id:string,text:string,links?:{label:string;path:string}[]) {setMessages(previous=>previous.map(m=>m.approval?.id===id?{...m,text,approval:undefined,links}:m));}
   function submit(event:React.FormEvent) {
@@ -100,14 +114,15 @@ export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,lear
       <div aria-hidden="true" className="absolute -right-10 -top-24 h-64 w-64 rounded-full bg-violet-500/25 blur-3xl" />
       <div aria-hidden="true" className="absolute -bottom-28 left-10 h-60 w-60 rounded-full bg-sky-500/20 blur-3xl" />
       <div className="relative flex items-center justify-between gap-3">
-        <span className="flex items-center gap-3"><span className="es-ai-orb grid h-12 w-12 place-items-center rounded-[18px] border border-white/20 bg-white/10 text-amber-200 shadow-xl"><Icon name="bolt" className="h-6 w-6" /></span><span><span className="block text-lg font-black tracking-tight">EduSphere Intelligence</span><span className="block text-xs tracking-wide text-indigo-200">A calmer way to run your school</span></span></span>
+        <span className="flex items-center gap-3"><span className="es-ai-orb grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[18px] border border-white/20 bg-white/10 p-0.5 shadow-xl"><AiArt kind="mascot" decorative priority sizes="48px" /></span><span><span className="block text-lg font-black tracking-tight">EduSphere Intelligence</span><span className="block text-xs tracking-wide text-indigo-200">A calmer way to run your school</span></span></span>
         <span className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold tracking-wide text-emerald-200">SCHOOL-SCOPED</span>
       </div>
-      <div className="relative mt-6 max-w-lg">
-        <p className="text-[11px] font-bold uppercase tracking-[.22em] text-amber-200/80">YOUR OPERATIONS COPILOT</p>
-        <h3 className="mt-2 text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]">From a thought to a thoughtful action.</h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-300">Explore school updates, prepare changes and approve every important decision before it happens.</p>
+      <div className="relative mt-7 max-w-[74%] pb-3 sm:mt-8 sm:max-w-[61%] sm:pb-8">
+        <p className="text-[10px] font-bold uppercase tracking-[.22em] text-amber-200/90 sm:text-[11px]">YOUR OPERATIONS COPILOT</p>
+        <h3 className="mt-2 text-[23px] font-bold leading-tight tracking-[-.035em] sm:text-[30px]">A brighter way to <span className="text-amber-200">get things done.</span></h3>
+        <p className="mt-3 max-w-sm text-xs leading-relaxed text-indigo-100/90 sm:text-sm">From attendance to smart substitute plans — ask, review, and stay in control.</p>
       </div>
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-10 z-0 w-[51%] max-w-[290px] es-ai-art-float sm:-bottom-16 sm:-right-2 sm:w-[43%]"><AiArt kind={principal?"workflow":learner?"mascot":"attendance"} decorative priority sizes="(max-width: 640px) 160px, 290px"/></div>
     </div>
     <div className="border-b border-slate-200/70 bg-white/95 px-4 py-4 sm:px-6">
       <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-[.13em] text-slate-500">Assistant mode</p><span className="text-[11px] text-slate-500">Switch anytime</span></div>
@@ -131,7 +146,27 @@ export function CopilotChat({ready,principal,readOnly,initialPreviews,draft,lear
     {!ready && !claudeReady && <p role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">No model provider is configured. Free school operations and preview cards are still available. Ask an authorized administrator to enable an official connection.</p>}
     {readOnly && <p className="mx-5 mt-4 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">Your school is read-only. Copilot can answer permitted questions; school changes are disabled.</p>}
     <div className="space-y-5 p-5 sm:p-7" role="log" aria-live="polite" aria-relevant="additions">
-      {!messages.length && <div className="py-6"><h3 className="text-xl font-semibold text-slate-900">What would you like to get done?</h3><p className="mt-2 text-sm text-slate-500">Use exact class divisions and teacher names. Proposed changes appear here for your review.</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{examples.map(text=><button key={text} onClick={()=>edit(text)} disabled={pending} className="group rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/60 p-4 text-left text-[13px] font-medium leading-relaxed text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md disabled:opacity-50">{text}</button>)}</div></div>}
+      {!messages.length && <section aria-label="Get started with EduSphere Intelligence" className="space-y-5">
+        <div className="relative grid grid-cols-[minmax(0,1fr)_100px] items-center gap-2 overflow-hidden rounded-[23px] border border-indigo-100 bg-gradient-to-r from-[#f1f4ff] via-white to-[#fffaf0] px-5 py-4 sm:grid-cols-[minmax(0,1fr)_160px] sm:px-6">
+          <div className="relative z-10">
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-indigo-600">READY WHEN YOU ARE</p>
+            <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900 sm:text-xl">{principal?"Your next decision, made simpler.":learner?"Curiosity starts here.":"Make more room for teaching."}</h3>
+            <p className="mt-1.5 max-w-md text-xs leading-5 text-slate-600 sm:text-sm">Choose a task below, or ask your own question. Important school changes always need your confirmation.</p>
+          </div>
+          <AiArt kind="mascot" decorative sizes="(max-width: 640px) 100px, 160px" className="relative z-0 es-ai-art-float" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold tracking-tight text-slate-800">What can we do together?</h3>
+          <p className="mt-1 text-xs text-slate-500">Choose a guided action — or write your own instruction below.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {suggestions.map(item=><button key={item.title} type="button" onClick={()=>edit(item.command)} disabled={pending} className="group relative flex min-h-40 flex-col overflow-hidden rounded-[22px] border border-indigo-100/80 bg-gradient-to-br from-white to-[#f7f8ff] px-4 pb-4 pt-2 text-left shadow-[0_12px_32px_-24px_rgba(49,46,129,.3)] transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-[0_20px_35px_-20px_rgba(49,46,129,.35)] focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50">
+              <span className="ml-auto block h-[91px] w-[100px] transition duration-500 group-hover:scale-110 sm:h-[105px] sm:w-[116px]"><AiArt kind={item.art} decorative sizes="116px"/></span>
+              <span className="mt-auto block text-[13px] font-bold text-slate-900">{item.title} <span aria-hidden="true" className="text-indigo-600">↗</span></span>
+              <span className="mt-1 block text-[11px] leading-5 text-slate-500">{item.description}</span>
+            </button>)}
+          </div>
+        </div>
+      </section>}
       {messages.map(m=><div key={m.id} className={m.role==="user"?"ml-auto max-w-[90%] rounded-2xl bg-brand-600 px-4 py-3 text-white":"max-w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-800"}><p className="mb-1 text-xs font-semibold opacity-65">{m.role==="user"?"You":"EduSphere"}</p><MessageText text={m.text}/>{m.links?.map(link=><a key={link.path} href={link.path} target="_blank" rel="noreferrer" className="mt-3 block rounded-xl border border-brand-200 bg-white p-3 text-sm font-semibold text-brand-700">Open private link: {link.label}</a>)}{m.approval && <ApprovalCard approval={m.approval} onEdit={edit} onComplete={complete} />}</div>)}
       {pending && <p role="status" className="text-sm text-slate-500">EduSphere is checking your request…</p>}
     </div>
