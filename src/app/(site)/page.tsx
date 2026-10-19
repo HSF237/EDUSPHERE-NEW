@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { SceneCampus, SceneClassroom, SceneLaptop, SceneParent, SceneReader, Spot, type SpotName } from "@/components/art";
 import { Icon, type IconName } from "@/components/icons";
+import { PaperCalculator } from "@/components/site/paper-calculator";
 import { SITE } from "@/lib/site";
 
 export const metadata = {
@@ -139,6 +140,9 @@ export default async function Home() {
           {PAIN.map(([t, d]) => <div key={t} className="card p-6"><h3 className="font-bold text-brand-950">{t}</h3><p className="mt-2 text-sm leading-relaxed text-slate-600">{d}</p></div>)}
         </div>
       </section>
+
+      {/* PAPER CALCULATOR */}
+      <PaperCalculator />
 
       {/* SOLUTION */}
       <section className="bg-brand-950 text-white">

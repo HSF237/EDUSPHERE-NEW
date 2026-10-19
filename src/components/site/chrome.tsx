@@ -5,6 +5,7 @@ import { LangSwitch } from "@/components/lang-switch";
 import { getLang } from "@/lib/i18n";
 
 const NAV = [
+  { href: "/#paper", label: "Paper savings" },
   { href: "/#roles", label: "Who it’s for" },
   { href: "/#modules", label: "Features" },
   { href: "/#security", label: "Security" },
@@ -40,7 +41,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-2">
           <LangSwitch current={lang} />
           <Link href="/register-school" className="btn-ghost hidden sm:inline-flex">Create school</Link>
-          <Link href="/login" className="btn">Sign in</Link>
+          <Link href="/login" className="btn shrink-0 whitespace-nowrap">Sign in</Link>
           <details className="relative md:hidden">
             <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 [&::-webkit-details-marker]:hidden" aria-label="Menu"><Icon name="menu" /></summary>
             <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-lift">

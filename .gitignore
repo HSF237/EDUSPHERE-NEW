@@ -6,3 +6,25 @@ node_modules
 .env*
 !.env.example
 *.tsbuildinfo
+
+appsail-build/
+npm-ci.log
+build.log
+rebuild.log
+catalyst-cli-install.log
+.neon
+app-config.json
+
+# Zoho/Catalyst deployment artifacts (not part of the Vercel build)
+.catalystrc
+catalyst.json
+deploy/
+scripts/pack-appsail.mjs
+scripts/write-appsail-config.mjs
+
+# Local agent tooling
+.claude/
+.mcp.json
+skills-lock.json
+
+*.log
