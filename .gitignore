@@ -28,3 +28,5 @@ scripts/write-appsail-config.mjs
 skills-lock.json
 
 *.log
+.vercel
+.agents/
