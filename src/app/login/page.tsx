@@ -4,6 +4,7 @@ import { LangSwitch } from "@/components/lang-switch";
 import { getLang, tr } from "@/lib/i18n";
 import { trx } from "@/lib/i18n-login";
 import { LoginForm } from "./login-form";
+import { configuredProviders } from "@/lib/oauth";
 import { headers } from "next/headers";
 import { schoolByHost } from "@/lib/custom";
 import type { Metadata } from "next";
@@ -24,6 +25,18 @@ export default async function LoginPage() {
   const logo = sch?.logoFileId ? `/api/brand/${sch.id}` : "/logo.png";
   const shown = sch?.name ?? "EduSphere";
   const t = (s: string) => { const x = trx(lang, s); return x !== s ? x : tr(lang, s); };
+  const providers = sch ? [] : configuredProviders();
+  const oauthErrors: Record<string, string> = {
+    failed: t("Sign-in didn't complete. Please try again."),
+    expired: t("Sign-in didn't complete. Please try again."),
+    "not-configured": t("Sign-in didn't complete. Please try again."),
+    denied: t("Sign-in was cancelled."),
+    "no-account": t("No EduSphere account uses this email. Ask your school for access, or create your school."),
+    "linked-elsewhere": t("This email is linked to a different sign-in. Use your email and password."),
+    "email-unverified": t("Your email isn't verified with this provider. Verify it, then try again."),
+    inactive: t("This account is inactive. Ask your principal for help."),
+    locked: t("Too many failed attempts. Try again later, or ask your school for a reset link."),
+  };
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <section className="blob-bg relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-50 via-white to-sun-50 p-12 lg:flex">
@@ -41,8 +54,8 @@ export default async function LoginPage() {
           <div className="mb-4 flex justify-end"><LangSwitch current={lang} /></div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logo} alt={shown} className="mx-auto mb-5 h-10 w-auto lg:hidden" />
-          <LoginForm hideCreate={!!sch} t={{
-            welcome: t("Welcome back"), sub: t("Sign in with the account your school gave you."), email: t("Email"), password: t("Password"),
+          <LoginForm hideCreate={!!sch} providers={providers} oauthErrors={oauthErrors} orLabel={t("or")} t={{
+            welcome: t("Welcome back"), sub: t("Sign in with the account your school gave you."), email: t("Email"), pwLabel: t("Password"),
             signIn: t("Sign in"), signingIn: t("Signing in…"), forgot: t("Forgot your password? Ask your principal or class teacher for a reset link."),
             create: t("Create your school"), agree: t("By signing in you agree to our"), terms: t("Terms"), and: t("and"), privacy: t("Privacy Policy"),
             home: t("Back to home"), reset: t("Password updated. Please sign in."),
