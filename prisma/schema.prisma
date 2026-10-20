@@ -118,6 +118,8 @@ model User {
   schoolId     String?
   email        String    @unique
   passwordHash String
+  /** Provider-scoped OAuth subject ("google:123…"), bound on first social sign-in. */
+  oauthSub     String?   @unique
   name         String
   role         Role
   phone        String?

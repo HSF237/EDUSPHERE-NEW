@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "./db";
 import type { Role } from "@prisma/client";
 
-const COOKIE = "es_session";
+export const SESSION_COOKIE = "es_session";
 const secret = () => {
   const s = process.env.AUTH_SECRET;
   if (!s || s.length < 32) throw new Error("AUTH_SECRET must be set (32+ chars)");
@@ -21,29 +21,34 @@ export type Session = {
   sup?: string;
 };
 
-export async function createSession(s: Session, opts?: { hours?: number }) {
+export async function sessionJwt(s: Session, opts?: { hours?: number }): Promise<{ jwt: string; maxAge: number }> {
   const hours = opts?.hours ?? 24 * 7;
-  const token = await new SignJWT({ ...s })
+  const jwt = await new SignJWT({ ...s })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${hours}h`)
     .sign(secret());
+  return { jwt, maxAge: 60 * 60 * hours };
+}
+
+export async function createSession(s: Session, opts?: { hours?: number }) {
+  const signed = await sessionJwt(s, opts);
   const c = await cookies();
-  c.set(COOKIE, token, {
+  c.set(SESSION_COOKIE, signed.jwt, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * hours,
+    maxAge: signed.maxAge,
   });
 }
 
 export async function destroySession() {
-  (await cookies()).delete(COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
 export async function getSession(): Promise<Session | null> {
-  const t = (await cookies()).get(COOKIE)?.value;
+  const t = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!t) return null;
   try {
     const { payload } = await jwtVerify(t, secret());
