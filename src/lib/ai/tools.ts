@@ -19,6 +19,15 @@ export const TOOLS: Tool[] = [
   define("get_teacher_timetable","Read a named teacher’s timetable. Staff with substitute permission can query school staff; ordinary teachers can query only themselves.",z.object({teacher_name:string,date:string}).strict(),{teacher_name:teacher,date},"SUBSTITUTES"),
   define("get_available_teachers","Read free, available teachers for an explicit period/date. Planning still checks subject qualification and workload limits.",z.object({period:z.number().int().min(1).max(20),date:string}).strict(),{period:{type:"integer",minimum:1,maximum:20},date},"SUBSTITUTES"),
 ];
+TOOLS.push({...define("mark_attendance",
+  "Class teacher only: prepare a complete attendance register from explicitly stated roll numbers for absent and late students. Other active students default to present. Changes require a separate confirmation and principal review.",
+  z.object({
+    date:string,
+    absentStudentRollNumbers:z.array(z.number().int().min(1).max(10000)).max(100),
+    lateStudentRollNumbers:z.array(z.number().int().min(1).max(10000)).max(100)
+  }).strict(),
+  {date,absentStudentRollNumbers:{type:"array",items:{type:"integer",minimum:1,maximum:10000}},lateStudentRollNumbers:{type:"array",items:{type:"integer",minimum:1,maximum:10000}}},
+  "SCOPED",false),allowedRoles:["TEACHER"]});
 TOOLS.push({...define("get_my_updates", "Read today’s role-specific updates: recorded absences for relevant staff and pending homework for students/parents. Never infer absences from missing records.", z.object({}).strict(), {}, "SCOPED"), allowedRoles:["ADMIN","TEACHER","PARENT","STUDENT"]});
 TOOLS.push({...define("get_homework", "Read one homework assignment by its ID, limited to your authorized classes. Use IDs from get_my_updates or the user’s homework page. Explain step by step; never mark work complete or submit it.", z.object({homework_id:string}).strict(), {homework_id:{type:"string"}}, "SCOPED"), allowedRoles:["ADMIN","TEACHER","PARENT","STUDENT"]});
 TOOLS.push({name:"search_school_records",description:"Principal-only lookup of existing school records and IDs across school modules. Use resource classes with grade 9 for Class IX. Empty query returns records; class_id and grade may be null; offset starts at 0. Search before selecting targets. Never guess IDs.",schema:searchSchema,parameters:jsonSchema(searchSchema),allowedRoles:["ADMIN"],capability:"STAFF",readOnly:true,requiresConfirmation:false,riskLevel:"low",audit:true,enabled:true});

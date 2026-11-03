@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { getCtx } from "@/lib/scope";
 import { db } from "@/lib/db";
 import { AgentError } from "@/lib/ai/policy";
+import { runQuickCommand } from "@/lib/ai/quick";
 import { configured, GeminiProvider, runAgent, type AgentReply } from "@/lib/ai/provider";
 import { assertActor, cancelProposal, confirmProposal, declarations, dispatch, reserveBudget, type Actor } from "@/lib/ai/runtime";
 
-const requestSchema=z.object({message:z.string().trim().min(1).max(4000),history:z.array(z.object({role:z.enum(["user","assistant"]),text:z.string().max(4000)}).strict()).max(6)}).strict();
+const requestSchema=z.object({message:z.string().trim().min(1).max(4000),mode:z.enum(["auto","local","gemini"]).optional(),history:z.array(z.object({role:z.enum(["user","assistant"]),text:z.string().max(4000)}).strict()).max(6)}).strict();
 const approvalSchema=z.object({id:z.string().min(1).max(128),fingerprint:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 export async function copilotActor():Promise<Actor> {
   const ctx=await getCtx({allowLocked:true,allowStudent:true});
@@ -21,7 +22,15 @@ export async function chatWithCopilot(input:unknown):Promise<AgentReply> {
   try {
     const parsed=requestSchema.safeParse(input);
     if (!parsed.success) throw new AgentError("Please enter a request under 4,000 characters.");
-    if (!configured()) throw new AgentError("Gemini is not configured. Ask the site administrator to add GEMINI_API_KEY to the server environment.");
+    const mode=parsed.data.mode ?? "auto";
+    if (mode==="auto" || mode==="local") {
+      const result=await runQuickCommand(actor,parsed.data.message);
+      if (result) return result;
+      if (mode==="local") return {text:"Free actions support school status, available teachers by period, personal updates, teacher attendance proposals, and principal-approved substitute plans. Select a configured provider for open-ended questions."};
+    }
+    if (!configured()) {
+      return {text:"Gemini chatting is not currently enabled for this school platform. Free school automations remain available. Personal Google AI subscriptions cannot be used as Gemini API access, and school use requires Google's eligibility and privacy review."};
+    }
     await reserveBudget(actor);
     const {localDay}=await import("@/lib/ai/policy");
     return await runAgent(new GeminiProvider(),parsed.data.message,parsed.data.history,declarations(actor),call=>dispatch(actor,parsed.data.message,call),`Role: ${actor.role}. School timezone: ${actor.timezone}. Today's local date: ${localDay(new Date(),actor.timezone)}. Read-only account: ${actor.readOnly}. Validate exact values against the current user request.`);
@@ -41,6 +50,7 @@ export async function approveCopilot(input:unknown):Promise<{message?:string;err
       const actions=result.actions as {message:string;path?:string}[];
       return {message:String(result.message),links:actions.filter(a=>a.path&&/^\/(?:join\/(?:teacher|parent)|reset)\/[A-Za-z0-9_-]+$/.test(a.path)).map(a=>({label:a.message,path:a.path!}))};
     }
+    if(result.kind==="attendance_submitted") return {message:`Class ${result.className} attendance for ${result.date} was submitted for principal approval. ${result.absent} absent and ${result.late} late. No parent alerts are sent before approval.`};
     return {message:Array.isArray(result.createdClasses)?`Created ${result.createdClasses.join(", ")} for ${result.academicYear}.`:`Assigned ${result.assignedPeriods} substitute periods on ${result.date}. Teacher notifications were not sent.`};
   } catch (e) {return {error:e instanceof AgentError?e.message:"Could not confirm the action. Refresh the preview before retrying."};}
 }

@@ -4,16 +4,16 @@
 
 @layer base {
   :root { --brand-50: 241 243 255; --brand-100: 224 231 255; --brand-200: 199 210 254; --brand-300: 165 180 252; --brand-400: 129 140 248; --brand-500: 99 102 241; --brand-600: 79 70 229; --brand-700: 67 56 202; --brand-800: 55 48 163; --brand-900: 49 46 129; --brand-950: 30 27 75; }
-  html { @apply bg-[#f5f6fc] text-slate-900 antialiased; }
+  html { @apply bg-[#f2f4fa] text-slate-900 antialiased; }
   h1, h2, h3 { @apply tracking-tight; }
   :focus-visible { @apply outline-2 outline-offset-2 outline-brand-600; }
   ::selection { @apply bg-brand-200; }
 }
 @layer components {
-  .card { @apply rounded-2xl border border-slate-200/70 bg-white shadow-soft; }
-  .card-h { @apply flex items-center justify-between border-b border-slate-100 px-4 py-3.5 sm:px-5 sm:py-4 text-[15px] font-semibold text-slate-900; }
+  .card { @apply rounded-[23px] border border-white/80 bg-white/95 shadow-[0_12px_35px_-23px_rgba(28,39,81,.28)]; }
+  .card-h { @apply flex items-center justify-between border-b border-slate-100/80 px-4 py-3.5 sm:px-5 sm:py-4 text-[15px] font-semibold text-slate-900; }
   .card-b { @apply p-4 sm:p-5; }
-  .btn { @apply min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-brand-700 hover:shadow-md active:translate-y-0 disabled:opacity-50; }
+  .btn { @apply min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_25px_-12px_rgba(67,56,202,.8)] transition hover:-translate-y-px hover:bg-brand-700 hover:shadow-md active:translate-y-0 disabled:opacity-50; }
   .btn-ghost { @apply min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50; }
   .btn-danger { @apply inline-flex items-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700; }
   .input { @apply min-h-[44px] text-base sm:min-h-0 sm:text-sm w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
@@ -22,8 +22,18 @@
   .td { @apply px-3 py-3 text-sm sm:px-4 sm:py-3.5; }
   .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
   .blob-bg { background-image: radial-gradient(60% 80% at 100% 0%, rgba(165,180,252,.35), transparent 60%), radial-gradient(50% 70% at 0% 100%, rgba(255,200,61,.18), transparent 60%); }
+  .es-ai-daily { background-image: radial-gradient(65% 160% at 110% -25%, rgba(165,180,252,.26), transparent 74%), radial-gradient(40% 95% at 0% 100%, rgba(250,204,21,.09), transparent 80%); }
+  .es-ai-grid { background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px); background-size: 32px 32px; mask-image:linear-gradient(110deg, transparent, #000 45%, #000); }
+  .es-ai-ambient { background-image: radial-gradient(circle at 78% 15%, rgba(129,140,248,.28),transparent 45%),linear-gradient(120deg,#0f1935,#1b2b59 66%,#252c63); }
+  .es-ai-orb { animation: es-ai-breathe 6s ease-in-out infinite; }
+  .es-ai-art-float { animation: es-ai-float 8s ease-in-out infinite; transform-origin: 50% 50%; }
+  @keyframes es-ai-float { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-7px,0); } }
+  .es-ai-launcher, .es-ai-notice, .es-ai-window { will-change: transform; }
+  .es-ai-studio button:focus-visible, .es-ai-window button:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 3px; }
+  @keyframes es-ai-breathe { 0%,100% {box-shadow:0 0 0 0 rgba(165,180,252,.13)} 50% {box-shadow:0 0 0 8px rgba(165,180,252,0)} }
+
 }
-@media (prefers-reduced-motion: reduce) { .animate-float, .animate-fade-up { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .animate-float, .animate-fade-up, .es-ai-orb, .es-ai-art-float { animation: none !important; } .es-ai-launcher { transition:none !important; } }
 
 @media print {
   aside, header, nav[aria-label="Quick links"], .no-print { display: none !important; }

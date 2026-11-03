@@ -1,0 +1,38 @@
+name: EduSphere AI Studio checks
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/ai/**'
+      - 'src/app/(app)/copilot/**'
+      - 'src/components/assistant/**'
+      - 'src/components/ui.tsx'
+      - 'src/app/globals.css'
+      - 'tests/**'
+      - 'prisma/**'
+      - 'package*.json'
+      - '.github/workflows/ai-studio.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/edusphere
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/edusphere
+          AUTH_SECRET: test-only-ci-secret-with-more-than-32-characters

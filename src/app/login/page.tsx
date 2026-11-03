@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SceneClassroom } from "@/components/art";
 import { LangSwitch } from "@/components/lang-switch";
 import { getLang, tr } from "@/lib/i18n";
@@ -10,6 +11,8 @@ import { schoolByHost } from "@/lib/custom";
 import type { Metadata } from "next";
 
 async function hostSchool() {
+  // A preview without an isolated test database must not query production records.
+  if (process.env.VERCEL_ENV === "preview" && !process.env.DATABASE_URL) return null;
   const h = await headers();
   return schoolByHost(h.get("x-forwarded-host") ?? h.get("host"));
 }
@@ -20,6 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage() {
+  // Display a clearly labelled, mock-only design preview until separate preview DB credentials exist.
+  if (process.env.VERCEL_ENV === "preview" && !process.env.DATABASE_URL) redirect("/ai-studio-demo");
   const lang = await getLang();
   const sch = await hostSchool();
   const logo = sch?.logoFileId ? `/api/brand/${sch.id}` : "/logo.png";

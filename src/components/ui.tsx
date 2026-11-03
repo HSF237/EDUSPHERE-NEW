@@ -7,10 +7,10 @@ export async function PageHeader({ title, sub, children, art }: { title: string;
   const lang = await getLang();
   const spot = art === false ? undefined : art ?? spotForTitle(title);
   return (
-    <div className="blob-bg animate-fade-up relative mb-7 overflow-hidden rounded-3xl border border-white bg-gradient-to-br from-white via-white to-brand-50 p-5 shadow-soft sm:p-7">
+    <div className="blob-bg animate-fade-up relative mb-7 overflow-hidden rounded-[27px] border border-white bg-gradient-to-br from-white via-[#fdfdff] to-indigo-50/70 p-5 shadow-[0_20px_55px_-35px_rgba(38,46,95,.35)] sm:p-8">
       <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-extrabold tracking-tight text-brand-950 sm:text-[28px]">{tr(lang, title)}</h1>
+          <h1 className="text-[23px] font-black tracking-[-.04em] text-[#172345] sm:text-[31px]">{tr(lang, title)}</h1>
           {sub && <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">{tr(lang, sub)}</p>}
           {children && <div className="mt-4 flex flex-wrap items-center gap-2">{children}</div>}
         </div>
@@ -23,12 +23,12 @@ export async function PageHeader({ title, sub, children, art }: { title: string;
 /** Illustrated welcome banner used on the dashboards. */
 export function DashBanner({ title, sub, scene, chips }: { title: string; sub?: string; scene: React.ReactNode; chips?: React.ReactNode }) {
   return (
-    <div className="animate-fade-up relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-5 text-white shadow-lift sm:p-8">
-      <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-24 left-1/3 h-60 w-60 rounded-full bg-sun-500/20" />
+    <div className="animate-fade-up relative mb-7 overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-[120deg] from-[#111d3e] via-[#243a78] to-[#5545af] p-6 text-white shadow-[0_25px_65px_-30px_rgba(23,30,75,.62)] sm:p-9">
+      <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-indigo-200/15 blur-md" />
+      <div className="pointer-events-none absolute -bottom-24 left-1/3 h-60 w-60 rounded-full bg-amber-200/15 blur-xl" />
       <div className="relative z-10 flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-6">
         <div className="min-w-0 flex-1 self-stretch">
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+          <h1 className="text-2xl font-black tracking-[-.04em] sm:text-[33px]">{title}</h1>
           {sub && <p className="mt-2 max-w-lg text-sm leading-relaxed text-brand-100">{sub}</p>}
           {chips && <div className="mt-5 flex flex-wrap gap-2">{chips}</div>}
         </div>
@@ -39,7 +39,7 @@ export function DashBanner({ title, sub, scene, chips }: { title: string; sub?: 
 }
 
 export function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur">{children}</span>;
+  return <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur-md">{children}</span>;
 }
 
 export async function Card({ title, action, children, className, flush }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; flush?: boolean }) {
